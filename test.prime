@@ -1,0 +1,100 @@
+(define cadr   (lambda (xs) (car (cdr xs))))
+(define cddr   (lambda (xs) (cdr (cdr xs))))
+(define caddr  (lambda (xs) (car (cdr (cdr xs)))))
+(define cdddr  (lambda (xs) (car (cdr (cdr xs)))))
+(define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
+(define cddddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
+
+(define defun    (macro exprs (list (symbol "define") (car exprs) (cons (symbol "lambda") (cons (cadr exprs) (cddr exprs))))))
+(define defmacro (macro exprs (list (symbol "define") (car exprs) (cons (symbol "macro")  (cons (cadr exprs) (cddr exprs))))))
+
+(defun idfun (x) x)
+(defun const (x y) x)
+
+(defun odd-elements (xs)
+  (if (= xs nil) nil (cons (car xs) (odd-elements (cdr (cdr xs))))))
+
+(defun even-elements (xs)
+  (if (= xs nil) nil (cons (car (cdr xs)) (even-elements (cdr (cdr xs))))))
+
+(defun mapcar (φ xs)
+  (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
+
+(defmacro let exprs
+  (cons (cons (symbol "lambda") (cons (odd-elements (car exprs)) (cdr exprs)))
+        (even-elements (car exprs))))
+
+(defmacro defthm (name statement proof)
+  (list (symbol "progn")
+    (list (symbol "define") name proof)
+    (list (symbol "if") (list (symbol "=")
+      (list (symbol "formula") name) statement)
+        nil (list (symbol "fail") "defthm"))))
+
+;;;;
+
+(define ⊥ (app "false"))
+
+(defun impl (P Q) (app "Impl" P Q))
+(defun ¬ (P) (impl P ⊥))
+(defun ¬¬ (P) (¬ (¬ P)))
+
+(define ⊤ (¬ ⊥))
+
+(defun formula/param (τ n) (nth n (formula/params τ)))
+
+(with-postulate
+  (define monotonicity (lambda (x τ P)
+    (postulate (subst x τ (formula P)))))
+
+  (define mp (lambda (antecedent implication)
+    (if (and (= (formula/funsym (formula implication)) "Impl")
+             (= (formula antecedent) (formula/param (formula implication) 0))
+             (= (formula/arity (formula implication)) 2))
+        (postulate (formula/param (formula implication) 1))
+        (fail "mp"))))
+
+  (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))
+
+  (define cr (postulate
+    (impl (impl (var "α") (impl (var "β") (var "γ")))
+          (impl (impl (var "α") (var "β"))
+                (impl (var "α") (var "γ"))))))
+
+  (define double-negation (postulate (impl (¬¬ (var "α")) (var "α")))))
+
+(defthm I (impl (var "α") (var "α"))
+  (mp (monotonicity "β" (var "α") veq)
+    (mp (monotonicity "β" (impl (var "α") (var "α")) veq)
+        (monotonicity "β" (impl (var "α") (var "α"))
+            (monotonicity "γ" (var "α") cr)))))
+
+(defthm test-thm (impl (var "B") (var "B"))
+  (monotonicity "α" (var "B") I))
+
+;;;;
+
+(define ∃ (lambda (x P) (binder "∃" x P)))
+
+(define τ₀ (∃ "y" (app "Ineq" (var "x") (var "y"))))
+;(print (subst "x" (var "y") τ₀) "\n") ; will emit an error
+(print (subst "x" (var "z") τ₀) "\n")
+
+(print veq " & " (formula veq) "\n")
+
+(print (monotonicity "α" (var "A") I) "\n")
+(print double-negation "\n")
+
+(let (x 1 y 2) (print (+ x y)) (newline))
+
+(defmacro incr! (x) (list (symbol "assign!") x (list (symbol "+") (list (symbol "deref") x) 1)))
+
+(let (n (ref 0))
+  (loop (print (deref n) " ") (incr! n)
+        (not (= (deref n) 5))))
+(newline)
+
+(define generate-macro (lambda (name) (macro (y) (list (symbol "+") name y))))
+
+(print "fin")
+(newline)
