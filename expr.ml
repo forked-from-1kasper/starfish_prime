@@ -54,7 +54,7 @@ struct
     | Lambda _   -> "#<CLOSURE>"
     | Symbol x   -> x
     | List vs    -> "(" ^ String.concat " " (List.map show vs) ^ ")"
-    | String x   -> "\"" ^ x ^ "\""
+    | String x   -> "\"" ^ String.escaped x ^ "\""
     | Float x    -> string_of_float x
     | Int x      -> string_of_int x
     | Bool true  -> "true"
