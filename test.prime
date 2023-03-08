@@ -45,15 +45,15 @@
 (defun formula/arity (τ) (length (formula/params τ)))
 
 (with-postulate
-  (define monotonicity (lambda (x τ P)
-    (postulate (subst x τ (formula P)))))
+  (defun monotonicity (x τ P)
+    (postulate (subst x τ (formula P))))
 
-  (define mp (lambda (antecedent implication)
+  (defun mp (antecedent implication)
     (if (and (= (formula/funsym (formula implication)) "Impl")
              (= (formula antecedent) (formula/param (formula implication) 0))
              (= (formula/arity (formula implication)) 2))
         (postulate (formula/param (formula implication) 1))
-        (fail "mp"))))
+        (fail "mp")))
 
   (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))
 
