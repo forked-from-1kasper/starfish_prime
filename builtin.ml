@@ -109,7 +109,6 @@ let binder = ternary (fun ctx e1 e2 e3 -> Formula (Binder (Expr.getString e1, Ex
 let formulaImpl = unary (fun ctx e -> Formula (Expr.getTheorem e))
 let funsymImpl  = unary (fun ctx e -> String (Formula.funsym (Expr.getFormula e)))
 let paramsImpl  = unary (fun ctx e -> List (List.map formula (Formula.params (Expr.getFormula e))))
-let arityImpl   = unary (fun ctx e -> Int (Formula.arity (Expr.getFormula e)))
 
 let subst = ternary (fun ctx e1 e2 e3 ->
   let x = Expr.getString  e1 in
@@ -165,6 +164,5 @@ let builtin =
    ("subst",          eager subst);
    ("formula",        eager formulaImpl);
    ("formula/funsym", eager funsymImpl);
-   ("formula/arity",  eager arityImpl);
    ("formula/params", eager paramsImpl)]
   |> List.to_seq |> Ctx.of_seq

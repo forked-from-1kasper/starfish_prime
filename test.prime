@@ -42,6 +42,7 @@
 (define ⊤ (¬ ⊥))
 
 (defun formula/param (τ n) (nth n (formula/params τ)))
+(defun formula/arity (τ) (length (formula/params τ)))
 
 (with-postulate
   (define monotonicity (lambda (x τ P)
