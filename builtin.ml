@@ -91,11 +91,12 @@ let readImpl ctx stxs =
 
 let formula t = Formula t
 
-let postulate = (unary >> eager) (fun ctx e -> Theorem (Expr.getFormula e))
+let postulate ident = (unary >> eager) (fun ctx e -> Theorem (ident, Expr.getFormula e))
 
-let withPostulate ctx es =
-  let ctx' = Env.upLocal ctx "postulate" postulate in
-  List.iter (Expr.eval ctx' >> ignore) es; Expr.eps
+let deftheory ctx = function
+  |   []    -> raise (TooFewParams [])
+  | e :: es -> let ctx' = Env.upLocal ctx "postulate" (postulate (Expr.getSymbol e)) in
+               List.iter (Expr.eval ctx' >> ignore) es; Expr.eps
 
 let var    = unary   (fun ctx e -> Formula (Var (Expr.getString e)))
 let app    = binary  (fun ctx e1 e2 -> Formula (App (Expr.getString e1, List.map Expr.getFormula (Expr.getList e2))))
@@ -110,6 +111,7 @@ let boundImpl = binary (fun ctx e1 e2 -> Bool (Formula.bound (Expr.getString e1)
 let occurImpl = binary (fun ctx e1 e2 -> Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
 
 let formulaImpl = unary (fun ctx e -> Formula (Expr.getTheorem e))
+let theoryImpl  = unary (fun ctx e -> String (Expr.getTheory e))
 let funsymImpl  = unary (fun ctx e -> String (Formula.funsym (Expr.getFormula e)))
 let paramsImpl  = unary (fun ctx e -> List (List.map formula (Formula.params (Expr.getFormula e))))
 
@@ -169,7 +171,7 @@ let builtin =
    ("progn",          special Expr.progn);
    ("loop",           special loopImpl);
    (* Formulae manipulation *)
-   ("with-postulate", special withPostulate);
+   ("deftheory",      special deftheory);
    ("var",            eager var);
    ("app",            eager app);
    ("binder",         eager binder);
@@ -181,6 +183,7 @@ let builtin =
    ("bv?",            eager boundImpl);
    ("occur?",         eager occurImpl);
    ("formula",        eager formulaImpl);
+   ("theory",         eager theoryImpl);
    ("formula/funsym", eager funsymImpl);
    ("formula/params", eager paramsImpl)]
   |> List.to_seq |> Dict.of_seq

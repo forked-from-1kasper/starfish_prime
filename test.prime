@@ -44,7 +44,7 @@
 (defun formula/param (τ n) (nth n (formula/params τ)))
 (defun formula/arity (τ) (length (formula/params τ)))
 
-(with-postulate
+(deftheory ZOL ;; zeroth-order logic
   (defun invariance₁ (θ P)   (postulate (subst θ (formula P))))
   (defun invariance₂ (x y P) (postulate (interchange x y (formula P))))
 
