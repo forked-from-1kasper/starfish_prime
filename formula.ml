@@ -77,7 +77,7 @@ struct
     in loop (Dict.map (fun t -> (t, fv t)) vs) Bag.empty e
 
   let rec interchange x y = function
-    | Var z            -> Var (cycle x y z)
+    | Var z            -> Var (exchange x y z)
     | App (f, ts)      -> App (f, List.map (interchange x y) ts)
-    | Binder (b, z, t) -> Binder (b, cycle x y z, interchange x y t)
+    | Binder (b, z, t) -> Binder (b, exchange x y z, interchange x y t)
 end
