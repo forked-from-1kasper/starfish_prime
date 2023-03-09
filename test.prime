@@ -45,10 +45,15 @@
 (defun formula/arity (τ) (length (formula/params τ)))
 
 (deftheory ZOL ;; zeroth-order logic
-  (defun invariance₁ (θ P)   (postulate (subst θ (formula P))))
-  (defun invariance₂ (x y P) (postulate (interchange x y (formula P))))
+  (defun wf? (P) (if (= (theory P) "ZOL") nil
+                     (fail "expected formula of zeroth-order logic")))
+
+  (defun invariance₁ (θ P)   (wf? P) (postulate (subst θ (formula P))))
+  (defun invariance₂ (x y P) (wf? P) (postulate (interchange x y (formula P))))
 
   (defun mp (antecedent implication)
+    (wf? antecedent) (wf? implication)
+
     (if (and (= (formula/funsym (formula implication)) "Impl")
              (= (formula antecedent) (formula/param (formula implication) 0))
              (= (formula/arity (formula implication)) 2))
