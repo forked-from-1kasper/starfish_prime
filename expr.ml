@@ -1,8 +1,6 @@
 open Prelude
 open Formula
 
-module Ctx = Map.Make(String)
-
 type expr =
   | Lambda  of clos
   | List    of expr list
@@ -14,7 +12,7 @@ type expr =
   | Ref     of expr ref
   | Formula of formula
   | Theorem of formula
-and ctx  = expr Ctx.t
+and ctx  = expr Dict.t
 and env  = { local : ctx; global : ctx ref }
 and clos = env -> expr list -> expr
 
@@ -22,7 +20,6 @@ exception NameError       of string
 exception AlreadyDeclared of string
 exception TypeMismatch    of expr * string * string
 exception InvalidArity    of int * int
-exception InvalidSubst    of string * formula * formula
 exception TooManyParams   of expr list
 exception TooFewParams    of expr list
 
@@ -30,18 +27,20 @@ module Env =
 struct
   type t = env
 
+  let init ds = {local = Dict.empty; global = ref ds}
+
   let get env k =
-    match Ctx.find_opt k env.local with
+    match Dict.find_opt k env.local with
     | Some v -> v
     | None   ->
-      match Ctx.find_opt k !(env.global) with
+      match Dict.find_opt k !(env.global) with
       | Some v -> v
       | None   -> raise (NameError k)
 
-  let upLocal env k v = { env with local = Ctx.add k v env.local }
+  let upLocal env k v = { env with local = Dict.add k v env.local }
 
   let upGlobal env k v = env.global :=
-    Ctx.update k (function
+    Dict.update k (function
       | Some _ -> raise (AlreadyDeclared k)
       | None   -> Some v) !(env.global)
 end
@@ -78,6 +77,10 @@ struct
     | Ref _      -> "ref"
     | Formula _  -> "formula"
     | Theorem _  -> "theorem"
+
+  let string x = String x
+  let symbol x = Symbol x
+  let list xs  = List xs
 
   let getList    = function List xs   -> xs | e -> raise (TypeMismatch (e, "list", typeof e))
   let getString  = function String x  -> x  | e -> raise (TypeMismatch (e, "string", typeof e))

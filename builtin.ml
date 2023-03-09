@@ -33,7 +33,7 @@ let mult t1 t2 = match t1, t2 with
 let addImpl = eager (const (List.fold_left plus Expr.eps))
 let mulImpl = eager (const (List.fold_left mult Expr.eps))
 
-let symbol = unary (fun ctx e -> Symbol (Expr.getString e))
+let symbolImpl = unary (fun ctx e -> Symbol (Expr.getString e))
 
 let rec ifImpl ctx = function
   | b :: e :: es ->
@@ -85,7 +85,6 @@ let readImpl ctx stxs =
     | []  -> Tokenizer.ofChan stdin
     | [e] -> Tokenizer.ofString (Expr.getString e)
     | es  -> raise (TooManyParams es) in
-
   match read tokenizer with
   | Some retval -> retval
   | None        -> raise NoExpression
@@ -98,34 +97,47 @@ let withPostulate ctx es =
   let ctx' = Env.upLocal ctx "postulate" postulate in
   List.iter (Expr.eval ctx' >> ignore) es; Expr.eps
 
-let var = unary (fun ctx e -> Formula (Var (Expr.getString e)))
-
-let app ctx = function
-  |   []    -> raise (TooFewParams [])
-  | x :: xs -> Formula (App (Expr.getString x, List.map Expr.getFormula xs))
-
+let var    = unary   (fun ctx e -> Formula (Var (Expr.getString e)))
+let app    = binary  (fun ctx e1 e2 -> Formula (App (Expr.getString e1, List.map Expr.getFormula (Expr.getList e2))))
 let binder = ternary (fun ctx e1 e2 e3 -> Formula (Binder (Expr.getString e1, Expr.getString e2, Expr.getFormula e3)))
+
+let set bag = List (List.map Expr.string (Bag.elements bag))
+let fvImpl = unary (fun ctx e -> set (Formula.fv (Expr.getFormula e)))
+let bvImpl = unary (fun ctx e -> set (Formula.bv (Expr.getFormula e)))
+
+let freeImpl  = binary (fun ctx e1 e2 -> Bool (Formula.free  (Expr.getString e1) (Expr.getFormula e2)))
+let boundImpl = binary (fun ctx e1 e2 -> Bool (Formula.bound (Expr.getString e1) (Expr.getFormula e2)))
+let occurImpl = binary (fun ctx e1 e2 -> Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
 
 let formulaImpl = unary (fun ctx e -> Formula (Expr.getTheorem e))
 let funsymImpl  = unary (fun ctx e -> String (Formula.funsym (Expr.getFormula e)))
 let paramsImpl  = unary (fun ctx e -> List (List.map formula (Formula.params (Expr.getFormula e))))
 
-let subst = ternary (fun ctx e1 e2 e3 ->
-  let x = Expr.getString  e1 in
-  let e = Expr.getFormula e2 in
-  let t = Expr.getFormula e3 in
+let rec dict k v =
+  let rec loop buff = function
+    | [] -> buff
+    | [e] -> raise (Failure "dict")
+    | e1 :: e2 :: es -> loop (Dict.add (k e1) (v e2) buff) es
+  in loop Dict.empty
 
-  if Formula.free e t then Formula (Formula.subst x e t)
-  else raise (InvalidSubst (x, e, t)))
+let interchangeImpl = ternary (fun ctx e1 e2 e3 ->
+  let x = Expr.getString  e1 in
+  let y = Expr.getString  e2 in
+  let t = Expr.getFormula e3 in
+  Formula (Formula.interchange x y t))
+
+let substImpl =
+  let getDict = Expr.getList >> dict Expr.getString Expr.getFormula in
+  binary (fun ctx e1 e2 -> Formula (Formula.subst (getDict e1) (Expr.getFormula e2)))
 
 let builtin =
   [("lambda",         lambda);
    ("λ",              lambda);
    ("macro",          macro);
    ("define",         special define);
-   ("list",           eager (fun ctx stxs -> List stxs));
-   ("quote",          special (fun ctx stxs -> List stxs));
-   ("symbol",         eager symbol);
+   ("list",           eager (const Expr.list));
+   ("quote",          special (const Expr.list));
+   ("symbol",         eager symbolImpl);
    ("eval",           eager evalImpl);
    ("=",              eager equal);
    ("nil",            Expr.eps);
@@ -161,8 +173,14 @@ let builtin =
    ("var",            eager var);
    ("app",            eager app);
    ("binder",         eager binder);
-   ("subst",          eager subst);
+   ("subst",          eager substImpl);
+   ("interchange",    eager interchangeImpl);
+   ("fv",             eager fvImpl);
+   ("bv",             eager bvImpl);
+   ("fv?",            eager freeImpl);
+   ("bv?",            eager boundImpl);
+   ("occur?",         eager occurImpl);
    ("formula",        eager formulaImpl);
    ("formula/funsym", eager funsymImpl);
    ("formula/params", eager paramsImpl)]
-  |> List.to_seq |> Ctx.of_seq
+  |> List.to_seq |> Dict.of_seq

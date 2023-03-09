@@ -33,9 +33,9 @@
 
 ;;;;
 
-(define ⊥ (app "false"))
+(define ⊥ (app "false" nil))
 
-(defun impl (P Q) (app "Impl" P Q))
+(defun impl (P Q) (app "Impl" (list P Q)))
 (defun ¬ (P) (impl P ⊥))
 (defun ¬¬ (P) (¬ (¬ P)))
 
@@ -45,8 +45,8 @@
 (defun formula/arity (τ) (length (formula/params τ)))
 
 (with-postulate
-  (defun monotonicity (x τ P)
-    (postulate (subst x τ (formula P))))
+  (defun invariance₁ (θ P)   (postulate (subst θ (formula P))))
+  (defun invariance₂ (x y P) (postulate (interchange x y (formula P))))
 
   (defun mp (antecedent implication)
     (if (and (= (formula/funsym (formula implication)) "Impl")
@@ -65,25 +65,24 @@
   (define double-negation (postulate (impl (¬¬ (var "α")) (var "α")))))
 
 (defthm I (impl (var "α") (var "α"))
-  (mp (monotonicity "β" (var "α") veq)
-    (mp (monotonicity "β" (impl (var "α") (var "α")) veq)
-        (monotonicity "β" (impl (var "α") (var "α"))
-            (monotonicity "γ" (var "α") cr)))))
+  (mp (invariance₁ (list "β" (var "α")) veq)
+    (mp (invariance₁ (list "β" (impl (var "α") (var "α"))) veq)
+        (invariance₁ (list "γ" (var "α") "β" (impl (var "α") (var "α"))) cr))))
 
 (defthm test-thm (impl (var "B") (var "B"))
-  (monotonicity "α" (var "B") I))
+  (invariance₁ (list "α" (var "B")) I))
 
 ;;;;
 
 (define ∃ (lambda (x P) (binder "∃" x P)))
 
-(define τ₀ (∃ "y" (app "Ineq" (var "x") (var "y"))))
-;(print (subst "x" (var "y") τ₀) "\n") ; will emit an error
-(print (subst "x" (var "z") τ₀) "\n")
+(define τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
+;(print (subst (list "x" (var "y")) τ₀) "\n") ; will emit an error
+(print (subst (list "x" (var "z")) τ₀) "\n")
 
 (print veq " & " (formula veq) "\n")
 
-(print (monotonicity "α" (var "A") I) "\n")
+(print (invariance₁ (list "α" (var "A")) I) "\n")
 (print double-negation "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))

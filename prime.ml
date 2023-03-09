@@ -40,5 +40,4 @@ let repl ctx =
 
 let () =
   let files = List.tl (Array.to_list Sys.argv) in
-  let ctx = {local = Ctx.empty; global = ref builtin} in
-  List.iter (loadFile ctx) files; repl ctx
+  let ctx = Env.init builtin in List.iter (loadFile ctx) files; repl ctx
