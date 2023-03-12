@@ -1,3 +1,4 @@
+let idfun x = x
 let const a b = a
 
 let (>>) f g = fun x -> g (f x)

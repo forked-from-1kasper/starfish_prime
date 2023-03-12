@@ -138,7 +138,7 @@ let builtin =
    ("macro",          macro);
    ("define",         special define);
    ("list",           eager (const Expr.list));
-   ("quote",          special (const Expr.list));
+   ("quote",          special (unary (const idfun)));
    ("symbol",         eager symbolImpl);
    ("eval",           eager evalImpl);
    ("=",              eager equal);
