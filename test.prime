@@ -20,6 +20,15 @@
 (defun mapcar (φ xs)
   (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
 
+(defun semiquote/eager (ε)
+  (if (= (typeof ε) (symbol "list"))
+      (if (= (car ε) (symbol "unquote"))
+          (if (= (length ε) 2) (cadr ε) (fail "unquote"))
+          (cons (symbol "list") (mapcar semiquote/eager ε)))
+      (list (symbol "quote") ε)))
+
+(defmacro semiquote σ (semiquote/eager σ))
+
 (defmacro let exprs
   (cons (cons (symbol "lambda") (cons (odd-elements (car exprs)) (cdr exprs)))
         (even-elements (car exprs))))
@@ -92,7 +101,7 @@
 
 (let (x 1 y 2) (print (+ x y)) (newline))
 
-(defmacro incr! (x) (list (symbol "assign!") x (list (symbol "+") (list (symbol "deref") x) 1)))
+(defmacro incr! (x) (semiquote assign! (unquote x) (+ (deref (unquote x)) 1)))
 
 (let (n (ref 0))
   (loop (print (deref n) " ") (incr! n)
