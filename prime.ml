@@ -15,6 +15,7 @@ let showExc = function
   | MismatchedBracket        -> "Mismatched bracket."
   | UnexpectedEOF            -> "Unexpected EOF."
   | NoExpression             -> "No expression."
+  | Error err                -> Printf.sprintf "Error:\n  %s" err
   | ex                       -> "Uncaught exception:\n  " ^ Printexc.to_string ex
 
 let rec load ctx tokenizer = match read tokenizer with

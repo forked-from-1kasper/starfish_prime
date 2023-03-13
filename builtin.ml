@@ -4,6 +4,8 @@ open Reader
 open Lambda
 open Expr
 
+exception Error of string
+
 let equal    = binary (fun ctx e1 e2 -> Bool (Expr.equal e1 e2))
 let define   = binary (fun ctx e1 e2 -> Env.upGlobal ctx (Expr.getSymbol e1) (Expr.eval ctx e2); Expr.eps)
 let evalImpl = unary Expr.eval
@@ -70,12 +72,14 @@ let refImpl    = unary  (fun ctx e -> Ref (ref e))
 let derefImpl  = unary  (fun ctx e -> !(Expr.getRef e))
 let assignImpl = binary (fun ctx e1 e2 -> Expr.getRef e1 := e2; Expr.eps)
 
-let printExpr = print_string << function
+let printExpr = function
   | Symbol x -> "(symbol \"" ^ x ^ "\")"
   | String s -> s
   | e        -> Expr.show e
 
-let printImpl   = fun ctx exprs -> List.iter printExpr exprs; flush stdout; Expr.eps
+let fail ctx xs = raise (Error (String.concat " " (List.map printExpr xs)))
+
+let printImpl   = fun ctx exprs -> List.iter (print_string << printExpr) exprs; flush stdout; Expr.eps
 let newlineImpl = nulary (fun ctx -> print_newline (); flush stdout; Expr.eps)
 
 let typeofImpl = unary (fun ctx e -> Symbol (Expr.typeof e))

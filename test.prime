@@ -11,14 +11,10 @@
 (defun idfun (x) x)
 (defun const (x y) x)
 
-(defun odd-elements (xs)
-  (if (= xs nil) nil (cons (car xs) (odd-elements (cdr (cdr xs))))))
+(defun odd-elements  (xs) (if (= xs nil) nil (cons (car xs)  (odd-elements  (cddr xs)))))
+(defun even-elements (xs) (if (= xs nil) nil (cons (cadr xs) (even-elements (cddr xs)))))
 
-(defun even-elements (xs)
-  (if (= xs nil) nil (cons (car (cdr xs)) (even-elements (cdr (cdr xs))))))
-
-(defun mapcar (φ xs)
-  (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
+(defun mapcar (φ xs) (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
 
 (defun semiquote/eager (ε)
   (if (= (typeof ε) (symbol "list"))
@@ -36,15 +32,15 @@
 (defmacro defthm (name statement proof)
   (list (symbol "progn")
     (list (symbol "define") name proof)
-    (list (symbol "if") (list (symbol "=")
-      (list (symbol "formula") name) statement)
-        nil (list (symbol "fail") "defthm"))))
+    (list (symbol "if") (list (symbol "=") (list (symbol "formula") name) statement)
+      nil (list (symbol "fail") "defthm:" (list (symbol "formula") name) "≠" statement))))
 
 ;;;;
 
 (define ⊥ (app "false" nil))
 
 (defun impl (P Q) (app "Impl" (list P Q)))
+
 (defun ¬ (P) (impl P ⊥))
 (defun ¬¬ (P) (¬ (¬ P)))
 

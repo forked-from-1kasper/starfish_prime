@@ -24,8 +24,6 @@ let quaternary fn ctx = function
 let eager   fn = Lambda (fun ctx -> List.map (Expr.eval ctx) >> fn ctx)
 let special fn = Lambda fn
 
-let fail ctx xs = raise (Failure (String.concat " " (List.map Expr.show xs)))
-
 let variadic x ys ctx = Env.upLocal ctx x (List ys)
 
 let uniadic xs ys ctx =
