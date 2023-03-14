@@ -4,10 +4,12 @@ open Builtin
 open Reader
 open Expr
 
+let quote xs = "“" ^ xs ^ "”"
+
 let showExc = function
   | NameError x              -> Printf.sprintf "Unknown variable “%s”." x
   | AlreadyDeclared x        -> Printf.sprintf "“%s” is already declared." x
-  | TypeMismatch (e, t1, t2) -> Printf.sprintf "“%s” expected to be “%s”, but it is “%s”." (Expr.show e) t1 t2
+  | TypeMismatch (e, ts)     -> Printf.sprintf "“%s” expected to be %s, but it is “%s”." (Expr.show e) (String.concat " or " (List.map quote ts)) (Expr.typeof e)
   | InvalidArity (z1, z2)    -> Printf.sprintf "Expected %d parameters but %d were given." z1 z2
   | InvalidSubst (x, t, e)   -> Printf.sprintf "Cannot substitute “%s” with “%s” in\n  %s" x (Formula.show t) (Formula.show e)
   | TooManyParams xs         -> Printf.sprintf "Too many (%d) parameters were given." (List.length xs)

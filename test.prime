@@ -46,8 +46,8 @@
 
 (define ⊤ (¬ ⊥))
 
-(defun formula/param (τ n) (nth n (formula/params τ)))
-(defun formula/arity (τ) (length (formula/params τ)))
+(defun proj (τ n) (nth n (cdr τ)))
+(defun arity (τ) (length (cdr τ)))
 
 (deftheory ZOL ;; zeroth-order logic
   (defun wf? (P) (if (= (theory P) "ZOL") nil
@@ -59,10 +59,10 @@
   (defun mp (antecedent implication)
     (wf? antecedent) (wf? implication)
 
-    (if (and (= (formula/funsym (formula implication)) "Impl")
-             (= (formula antecedent) (formula/param (formula implication) 0))
-             (= (formula/arity (formula implication)) 2))
-        (postulate (formula/param (formula implication) 1))
+    (if (and (= (car (formula implication)) "Impl")
+             (= (arity (formula implication)) 2)
+             (= (formula antecedent) (proj (formula implication) 0)))
+        (postulate (proj (formula implication) 1))
         (fail "mp")))
 
   (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))

@@ -20,7 +20,7 @@ let plus t1 t2 = match t1, t2 with
   | Bool b1,  Bool b2  -> Bool (xor b1 b2)
   | String x, String y -> String (x ^ y)
   | List xs,  List ys  -> List (List.append xs ys)
-  | _,        _        -> raise (TypeMismatch (t1, Expr.typeof t2, Expr.typeof t1))
+  | _,        _        -> raise (TypeMismatch (t1, [Expr.typeof t2]))
 
 let mult t1 t2 = match t1, t2 with
   | List [],  v        -> v
@@ -30,7 +30,7 @@ let mult t1 t2 = match t1, t2 with
   | Float x,  Int y    -> Float (x *. float_of_int y)
   | Float x,  Float y  -> Float (x *. y)
   | Bool b1,  Bool b2  -> Bool (b1 && b2)
-  | _,        _        -> raise (TypeMismatch (t1, Expr.typeof t2, Expr.typeof t1))
+  | _,        _        -> raise (TypeMismatch (t1, [Expr.typeof t2]))
 
 let addImpl = eager (const (List.fold_left plus Expr.eps))
 let mulImpl = eager (const (List.fold_left mult Expr.eps))
@@ -62,8 +62,16 @@ let rec orImpl ctx = function
 
 let notImpl = unary (fun ctx e -> Bool (not (Expr.getBool e)))
 
-let car    = unary  (fun ctx e -> List.hd (Expr.getList e))
-let cdr    = unary  (fun ctx e -> List (List.tl (Expr.getList e)))
+let car = unary (fun ctx -> function
+  | List xs   -> List.hd xs
+  | Formula t -> String (Formula.funsym t)
+  | e         -> raise (TypeMismatch (e, ["list"; "formula"])))
+
+let cdr = unary (fun ctx -> function
+  | List xs   -> List (List.tl xs)
+  | Formula t -> List (List.map Expr.formula (Formula.params t))
+  | e         -> raise (TypeMismatch (e, ["list"; "formula"])))
+
 let cons   = binary (fun ctx e1 e2 -> List (e1 :: Expr.getList e2))
 let length = unary  (fun ctx e -> Int (List.length (Expr.getList e)))
 let nth    = binary (fun ctx e1 e2 -> List.nth (Expr.getList e2) (Expr.getInt e1))
@@ -93,8 +101,6 @@ let readImpl ctx stxs =
   | Some retval -> retval
   | None        -> raise NoExpression
 
-let formula t = Formula t
-
 let postulate ident = (unary >> eager) (fun ctx e -> Theorem (ident, Expr.getFormula e))
 
 let deftheory ctx = function
@@ -116,8 +122,6 @@ let occurImpl = binary (fun ctx e1 e2 -> Bool (Formula.occur (Expr.getString e1)
 
 let formulaImpl = unary (fun ctx e -> Formula (Expr.getTheorem e))
 let theoryImpl  = unary (fun ctx e -> String (Expr.getTheory e))
-let funsymImpl  = unary (fun ctx e -> String (Formula.funsym (Expr.getFormula e)))
-let paramsImpl  = unary (fun ctx e -> List (List.map formula (Formula.params (Expr.getFormula e))))
 
 let rec dict k v =
   let rec loop buff = function
@@ -187,7 +191,5 @@ let builtin =
    ("bv?",            eager boundImpl);
    ("occur?",         eager occurImpl);
    ("formula",        eager formulaImpl);
-   ("theory",         eager theoryImpl);
-   ("formula/funsym", eager funsymImpl);
-   ("formula/params", eager paramsImpl)]
+   ("theory",         eager theoryImpl)]
   |> List.to_seq |> Dict.of_seq

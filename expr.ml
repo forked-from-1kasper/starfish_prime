@@ -18,7 +18,7 @@ and clos = env -> expr list -> expr
 
 exception NameError       of string
 exception AlreadyDeclared of string
-exception TypeMismatch    of expr * string * string
+exception TypeMismatch    of expr * string list
 exception InvalidArity    of int * int
 exception TooManyParams   of expr list
 exception TooFewParams    of expr list
@@ -78,21 +78,22 @@ struct
     | Formula _  -> "formula"
     | Theorem _  -> "theorem"
 
-  let string x = String x
-  let symbol x = Symbol x
-  let list xs  = List xs
+  let formula t = Formula t
+  let string x  = String x
+  let symbol x  = Symbol x
+  let list xs   = List xs
 
-  let getList    = function List xs        -> xs | e -> raise (TypeMismatch (e, "list", typeof e))
-  let getString  = function String x       -> x  | e -> raise (TypeMismatch (e, "string", typeof e))
-  let getSymbol  = function Symbol x       -> x  | e -> raise (TypeMismatch (e, "symbol", typeof e))
-  let getLam     = function Lambda fn      -> fn | e -> raise (TypeMismatch (e, "closure", typeof e))
-  let getRef     = function Ref r          -> r  | e -> raise (TypeMismatch (e, "reference", typeof e))
-  let getTheorem = function Theorem (_, t) -> t  | e -> raise (TypeMismatch (e, "theorem", typeof e))
-  let getTheory  = function Theorem (x, _) -> x  | e -> raise (TypeMismatch (e, "theorem", typeof e))
-  let getFormula = function Formula t      -> t  | e -> raise (TypeMismatch (e, "formula", typeof e))
-  let getBool    = function Bool b         -> b  | e -> raise (TypeMismatch (e, "bool", typeof e))
-  let getInt     = function Int z          -> z  | e -> raise (TypeMismatch (e, "int", typeof e))
-  let getFloat   = function Float r        -> r  | e -> raise (TypeMismatch (e, "float", typeof e))
+  let getList    = function List xs        -> xs | e -> raise (TypeMismatch (e, ["list"]))
+  let getString  = function String x       -> x  | e -> raise (TypeMismatch (e, ["string"]))
+  let getSymbol  = function Symbol x       -> x  | e -> raise (TypeMismatch (e, ["symbol"]))
+  let getLam     = function Lambda fn      -> fn | e -> raise (TypeMismatch (e, ["closure"]))
+  let getRef     = function Ref r          -> r  | e -> raise (TypeMismatch (e, ["reference"]))
+  let getTheorem = function Theorem (_, t) -> t  | e -> raise (TypeMismatch (e, ["theorem"]))
+  let getTheory  = function Theorem (x, _) -> x  | e -> raise (TypeMismatch (e, ["theorem"]))
+  let getFormula = function Formula t      -> t  | e -> raise (TypeMismatch (e, ["formula"]))
+  let getBool    = function Bool b         -> b  | e -> raise (TypeMismatch (e, ["bool"]))
+  let getInt     = function Int z          -> z  | e -> raise (TypeMismatch (e, ["int"]))
+  let getFloat   = function Float r        -> r  | e -> raise (TypeMismatch (e, ["float"]))
 
   let rec equal e1 e2 = match e1, e2 with
     | Lambda f1,        Lambda f2        -> f1 == f2
