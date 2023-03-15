@@ -5,8 +5,8 @@
 (define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
 (define cddddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
 
-(define defun    (macro exprs (list (symbol "define") (car exprs) (cons (symbol "lambda") (cons (cadr exprs) (cddr exprs))))))
-(define defmacro (macro exprs (list (symbol "define") (car exprs) (cons (symbol "macro")  (cons (cadr exprs) (cddr exprs))))))
+(define defun    (macro exprs (list 'define (car exprs) (cons 'lambda (cons (cadr exprs) (cddr exprs))))))
+(define defmacro (macro exprs (list 'define (car exprs) (cons 'macro  (cons (cadr exprs) (cddr exprs))))))
 
 (defun idfun (x) x)
 (defun const (x y) x)

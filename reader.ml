@@ -61,13 +61,19 @@ end
 
 module Reader =
 struct
+  let tail xs = String.sub xs 1 (String.length xs - 1)
+  let quoted x = String.length x > 1 && x.[0] = '\''
+
+  let numeral x =
+    try Int (int_of_string x) with Failure _ ->
+    try Float (float_of_string x) with Failure _ -> Symbol x
+
   let ident = function
-    | "false" -> Bool false
-    | "true"  -> Bool true
-    | "nil"   -> Expr.eps
-    | x       ->
-      try Int (int_of_string x) with Failure _ ->
-      try Float (float_of_string x) with Failure _ -> Symbol x
+    | "false"         -> Bool false
+    | "true"          -> Bool true
+    | "nil"           -> Expr.eps
+    | x when quoted x -> List [Symbol "symbol"; String (tail x)]
+    | x               -> numeral x
 
   let rec expr t = function
     | Eof       -> None
