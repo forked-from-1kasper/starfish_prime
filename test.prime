@@ -66,8 +66,8 @@
   (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))
 
   (define cr (postulate (impl (impl (var "α") (impl (var "β") (var "γ")))
-                        (impl (impl (var "α") (var "β"))
-                              (impl (var "α") (var "γ"))))))
+                              (impl (impl (var "α") (var "β"))
+                                    (impl (var "α") (var "γ"))))))
 
   (define double-negation (postulate (impl (¬¬ (var "α")) (var "α")))))
 
