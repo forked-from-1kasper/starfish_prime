@@ -80,4 +80,20 @@ struct
     | Var z            -> Var (exchange x y z)
     | App (f, ts)      -> App (f, List.map (interchange x y) ts)
     | Binder (b, z, t) -> Binder (b, exchange x y z, interchange x y t)
+
+  let rec unify ss t1 t2 =
+    match t1, t2 with
+    | Var x, t ->
+    begin match Dict.find_opt x ss with
+      | Some e -> if equal t e then ss else raise (Failure "unify")
+      | None   -> Dict.add x t ss
+    end
+    | App (f1, ts1), App (f2, ts2) ->
+      if f1 = f2 then List.fold_left2 unify ss ts1 ts2 else raise (Failure "unify")
+    | Binder (b1, x, e1), Binder (b2, y, e2) ->
+      if b1 = b2 then begin match Dict.find_opt x ss with
+        | Some _ -> raise (Failure "unify")
+        | None   -> unify (Dict.add x (Var y) ss) e1 e2
+      end else raise (Failure "unify")
+    | _, _ -> raise (Failure "unify")
 end

@@ -140,6 +140,20 @@ let substImpl =
   let getDict = Expr.getList >> dict Expr.getString Expr.getFormula in
   binary (fun ctx e1 e2 -> Formula (Formula.subst (getDict e1) (Expr.getFormula e2)))
 
+let unifyImpl = binary (fun ctx e1 e2 ->
+  List (Dict.bindings (Formula.unify Dict.empty (Expr.getFormula e1) (Expr.getFormula e2))
+       |> List.map (fun (k, v) -> List [String k; Formula v])))
+
+let caseImpl ctx =
+  let rec loop ss = function
+    | []             -> Expr.eps
+    | [e]            -> Expr.eval (Dict.fold (fun k v e -> Env.upLocal e k (Formula v)) ss ctx) e
+    | e1 :: e2 :: es ->
+      let t1 = Expr.getFormula (Expr.eval ctx e1) in
+      let t2 = Expr.getFormula (Expr.eval ctx e2) in
+      loop (Formula.unify ss t2 t1) es
+  in loop Dict.empty
+
 let builtin =
   [("lambda",         lambda);
    ("λ",              lambda);
@@ -191,5 +205,7 @@ let builtin =
    ("bv?",            eager boundImpl);
    ("occur?",         eager occurImpl);
    ("formula",        eager formulaImpl);
-   ("theory",         eager theoryImpl)]
+   ("theory",         eager theoryImpl);
+   ("unify",          eager unifyImpl);
+   ("case",           special caseImpl)]
   |> List.to_seq |> Dict.of_seq

@@ -50,27 +50,24 @@
 (defun arity (τ) (length (cdr τ)))
 
 (deftheory ZOL ;; zeroth-order logic
-  (defun wf? (P) (if (= (theory P) "ZOL") nil
-                     (fail "expected formula of zeroth-order logic")))
+  (defmacro well-founded? σ
+    (list 'if (cons 'and (mapcar (lambda (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
+      (list 'fail "expected formula of zeroth-order logic")))
 
-  (defun invariance₁ (θ P)   (wf? P) (postulate (subst θ (formula P))))
-  (defun invariance₂ (x y P) (wf? P) (postulate (interchange x y (formula P))))
+  (defun invariance₁ (θ P) (well-founded? P) (postulate (subst θ (formula P))))
+  (defun invariance₂ (x y P) (well-founded? P) (postulate (interchange x y (formula P))))
 
   (defun mp (antecedent implication)
-    (wf? antecedent) (wf? implication)
-
-    (if (and (= (car (formula implication)) "Impl")
-             (= (arity (formula implication)) 2)
-             (= (formula antecedent) (proj (formula implication) 0)))
-        (postulate (proj (formula implication) 1))
-        (fail "mp")))
+    (well-founded? antecedent implication)
+    (case (formula antecedent)  (var "P")
+          (formula implication) (impl (var "P") (var "Q"))
+      (postulate Q)))
 
   (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))
 
-  (define cr (postulate
-    (impl (impl (var "α") (impl (var "β") (var "γ")))
-          (impl (impl (var "α") (var "β"))
-                (impl (var "α") (var "γ"))))))
+  (define cr (postulate (impl (impl (var "α") (impl (var "β") (var "γ")))
+                        (impl (impl (var "α") (var "β"))
+                              (impl (var "α") (var "γ"))))))
 
   (define double-negation (postulate (impl (¬¬ (var "α")) (var "α")))))
 
