@@ -54,13 +54,13 @@
     (list 'if (cons 'and (mapcar (lambda (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
       (list 'fail "expected formula of zeroth-order logic")))
 
-  (defun invariance₁ (θ P) (well-founded? P) (postulate (subst θ (formula P))))
-  (defun invariance₂ (x y P) (well-founded? P) (postulate (interchange x y (formula P))))
+  (defun invariance₁ (θ T) (well-founded? T) (postulate (subst θ (formula T))))
+  (defun invariance₂ (x y T) (well-founded? T) (postulate (interchange x y (formula T))))
 
-  (defun mp (antecedent implication)
-    (well-founded? antecedent implication)
-    (case (formula antecedent)  (var "P")
-          (formula implication) (impl (var "P") (var "Q"))
+  (defun mp (T₁ T₂)
+    (well-founded? T₁ T₂)
+    (case (formula T₁) (var "P")
+          (formula T₂) (impl (var "P") (var "Q"))
       (postulate Q)))
 
   (define veq (postulate (impl (var "α") (impl (var "β") (var "α")))))
