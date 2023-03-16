@@ -3,7 +3,7 @@
 (define caddr  (lambda (xs) (car (cdr (cdr xs)))))
 (define cdddr  (lambda (xs) (car (cdr (cdr xs)))))
 (define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
-(define cddddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
+(define cddddr (lambda (xs) (cdr (cdr (cdr (cdr xs))))))
 
 (define defun    (macro exprs (list 'define (car exprs) (cons 'lambda (cons (cadr exprs) (cddr exprs))))))
 (define defmacro (macro exprs (list 'define (car exprs) (cons 'macro  (cons (cadr exprs) (cddr exprs))))))
@@ -17,23 +17,22 @@
 (defun mapcar (φ xs) (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
 
 (defun semiquote/eager (ε)
-  (if (= (typeof ε) (symbol "list"))
-      (if (= (car ε) (symbol "unquote"))
+  (if (= (typeof ε) 'list)
+      (if (= (car ε) 'unquote)
           (if (= (length ε) 2) (cadr ε) (fail "unquote"))
-          (cons (symbol "list") (mapcar semiquote/eager ε)))
-      (list (symbol "quote") ε)))
+          (cons 'list (mapcar semiquote/eager ε)))
+      (list 'quote ε)))
 
 (defmacro semiquote σ (semiquote/eager σ))
 
-(defmacro let exprs
-  (cons (cons (symbol "lambda") (cons (odd-elements (car exprs)) (cdr exprs)))
-        (even-elements (car exprs))))
+(defmacro let σ
+  (cons (cons 'lambda (cons (odd-elements (car σ)) (cdr σ)))
+        (even-elements (car σ))))
 
 (defmacro defthm (name statement proof)
-  (list (symbol "progn")
-    (list (symbol "define") name proof)
-    (list (symbol "if") (list (symbol "=") (list (symbol "formula") name) statement)
-      nil (list (symbol "fail") "defthm:" (list (symbol "formula") name) "≠" statement))))
+  (list 'progn (list 'define name proof)
+    (list 'if (list '= (list 'formula name) statement)
+      nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
 ;;;;
 
@@ -101,7 +100,7 @@
         (not (= (deref n) 5))))
 (newline)
 
-(define generate-macro (lambda (name) (macro (y) (list (symbol "+") name y))))
+(define generate-macro (lambda (name) (macro (y) (list '+ name y))))
 
 (print "fin")
 (newline)
