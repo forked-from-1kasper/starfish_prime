@@ -56,8 +56,7 @@
   (defun invariance₁ (θ T)   (well-founded? T) (postulate (subst θ (formula T))))
   (defun invariance₂ (x y T) (well-founded? T) (postulate (interchange x y (formula T))))
 
-  (defun mp (T₁ T₂)
-    (well-founded? T₁ T₂)
+  (defun mp (T₁ T₂) (well-founded? T₁ T₂)
     (case (formula T₁) (var "P")
           (formula T₂) (impl (var "P") (var "Q"))
       (postulate Q)))
