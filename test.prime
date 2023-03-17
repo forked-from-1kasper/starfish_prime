@@ -83,7 +83,7 @@
           (invariance₁ (list "α" ⊥ "β" (¬¬ (var "P")) "γ" (var "P")) cr))))
 
 (defthm test-thm (impl (var "B") (var "B"))
-  (invariance₁ (list "α" (var "B")) I))
+  (invariance₂ "α" "B" I))
 
 ;;;;
 
