@@ -91,7 +91,7 @@
     (mp (invariance₁ (list "α" P) I)
         (mp T (invariance₁ (list "α" P "β" P "γ" Q) cr)))))
 
-(defthm modus-ponens (impl (var "P") (impl (impl (var "P") (var "Q")) (var "Q")))
+(defthm cut (impl (var "P") (impl (impl (var "P") (var "Q")) (var "Q")))
   (let (T₁ (→-intro (var "P")
              (mp (invariance₁ (list "α" (impl (var "P") (var "Q"))) I)
                  (invariance₁ (list "α" (impl (var "P") (var "Q"))
@@ -105,11 +105,11 @@
     (mp T₃ (mp T₁ T₂))))
 
 (defthm ¬¬-intro (impl (var "α") (¬¬ (var "α")))
-  (invariance₁ (list "P" (var "α") "Q" ⊥) modus-ponens))
+  (invariance₁ (list "P" (var "α") "Q" ⊥) cut))
 
 (defthm →-comm (impl (impl (var "P") (impl (var "Q") (var "R")))
                      (impl (var "Q") (impl (var "P") (var "R"))))
-  (let (T₁ (mp (invariance₁ (list "P" (var "Q") "Q" (var "R")) modus-ponens)
+  (let (T₁ (mp (invariance₁ (list "P" (var "Q") "Q" (var "R")) cut)
              (mp (→-intro (var "Q") (invariance₁ (list "α" (impl (impl (var "Q") (var "R")) (var "R"))
                                                        "β" (var "P")) veq))
                  (invariance₁ (list "α" (var "Q")
