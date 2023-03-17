@@ -74,6 +74,14 @@
     (mp (invariance₁ (list "β" (impl (var "α") (var "α"))) veq)
         (invariance₁ (list "γ" (var "α") "β" (impl (var "α") (var "α"))) cr))))
 
+;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
+(defun →-intro (P T) (mp T (invariance₁ (list "α" (formula T) "β" P) veq)))
+
+(defthm principle-of-explosion (impl ⊥ (var "P"))
+  (mp (invariance₁ (list "α" ⊥ "β" (¬ (var "P"))) veq)
+      (mp (→-intro ⊥ (invariance₁ (list "α" (var "P")) double-negation))
+          (invariance₁ (list "α" ⊥ "β" (¬¬ (var "P")) "γ" (var "P")) cr))))
+
 (defthm test-thm (impl (var "B") (var "B"))
   (invariance₁ (list "α" (var "B")) I))
 
