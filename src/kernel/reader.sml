@@ -3,6 +3,7 @@ datatype token =
 | Ident of string
 | Lparen
 | Rparen
+| Quote
 | Eof
 
 exception InvalidEscape of string
@@ -78,6 +79,7 @@ struct
     | #")"  => Rparen
     | #";"  => (discard t (negate nl); loop t)
     | #"\"" => let val (c, x) = until t (equal #"\"") in if Option.isSome c then Literal x else raise UnexpectedEOF end
+    | #"'"  => Quote
     | c     => if whitespace c then loop t else (push t c; let val (c, x) = until t special in (Option.app (push t) c; Ident x) end)
   in
     fn t => loop t handle EOF => Eof
@@ -86,20 +88,17 @@ end
 
 structure Reader =
 struct
-  fun tail xs = String.extract (xs, 1, NONE)
-  fun quoted x = String.size x > 1 andalso String.sub (x, 0) = #"'"
-
   fun numeral x =
     case Int.fromString x of SOME z => Int z | NONE =>
     case Real.fromString x of SOME r => Real r | NONE => Symbol x
-
-  fun symbol x = Lambda (fn _ => Symbol x)
 
   val ident = fn
     "false" => Bool false
   | "true"  => Bool true
   | "nil"   => Expr.eps
-  | x       => if quoted x then List [symbol (tail x)] else numeral x
+  | x       => numeral x
+
+  fun constImpl e = List [Lambda (fn _ => e)]
 
   fun expr t =
   let
@@ -108,7 +107,10 @@ struct
     | Lparen    => SOME (List (many ()))
     | Rparen    => raise MismatchedBracket
     | Ident x   => SOME (ident x)
-    | Literal x => case String.fromString x of NONE => raise (InvalidEscape x) | SOME y => SOME (String y)
+    | Literal x => (case String.fromString x of NONE => raise (InvalidEscape x) | SOME y => SOME (String y))
+    | Quote     => case loop (Tokenizer.next t) of
+        NONE   => NONE
+      | SOME e => SOME (constImpl e)
 
     and many () = case Tokenizer.next t of
       Rparen => []
