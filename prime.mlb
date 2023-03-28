@@ -1,4 +1,6 @@
 $(SML_LIB)/basis/basis.mlb
+src/algorithms/sig.sml
+src/algorithms/bst.sml
 src/algorithms/trie.sml
 src/kernel/formula.sml
 src/kernel/expr.sml

@@ -20,7 +20,9 @@ fun compile target deps =
 fun link xs = "$(MOSML)/bin/mosmlc -o $(BINARY) " ^ concat xs
 
 val project =
-[("algorithms/trie", []),
+[("algorithms/sig",  []),
+ ("algorithms/bst",  ["algorithms/sig"]),
+ ("algorithms/trie", ["algorithms/sig", "algorithms/bst"]),
  ("kernel/formula",  ["algorithms/trie"]),
  ("kernel/expr",     ["algorithms/trie", "kernel/formula"]),
  ("kernel/reader",   ["kernel/expr"]),
