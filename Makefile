@@ -1,13 +1,17 @@
-default: native
+BINARY = prime
+SRCDIR = src
+
+mosml: $(BINARY)
+
+mlton:
+	$(MLTON)/bin/mlton prime.mlb
+
+.depend: mosml.sml
+	$(MOSML)/bin/mosml -quietdec mosml.sml > .depend
 
 clean:
-	ocamlbuild -clean
+	find . -type f -name '*.ui' -exec rm -f "{}" +
+	find . -type f -name '*.uo' -exec rm -f "{}" +
+	rm -f $(BINARY) .depend
 
-native:
-	ocamlbuild -use-menhir prime.native
-
-byte:
-	ocamlbuild -use-menhir prime.byte
-
-byte-debug:
-	ocamlbuild -use-menhir prime.byte -tag 'debug'
+include .depend

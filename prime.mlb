@@ -1,0 +1,9 @@
+$(SML_LIB)/basis/basis.mlb
+src/algorithms/trie.sml
+src/kernel/formula.sml
+src/kernel/expr.sml
+src/kernel/reader.sml
+src/kernel/exc.sml
+src/builtin/common.sml
+src/builtin/basis.sml
+src/main.sml

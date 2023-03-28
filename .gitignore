@@ -1,2 +1,4 @@
-_build/*
-*.native
+prime
+*.ui
+*.uo
+.depend
