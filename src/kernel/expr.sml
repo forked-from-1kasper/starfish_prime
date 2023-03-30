@@ -48,7 +48,7 @@ struct
     Lambda _       => "#<CLOSURE>"
   | Symbol x       => x
   | List vs        => "(" ^ String.concatWith " " (List.map show vs) ^ ")"
-  | String x       => "\"" ^ String.toString x ^ "\""
+  | String x       => "\"" ^ String.toCString x ^ "\""
   | Real x         => Real.toString x
   | Int x          => Int.toString x
   | Bool true      => "true"

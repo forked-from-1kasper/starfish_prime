@@ -1,123 +1,127 @@
-datatype token =
-  Literal of string
-| Ident of string
-| Lparen
-| Rparen
-| Quote
-| Eof
-
 exception InvalidEscape of string
 exception MismatchedBracket
 exception UnexpectedEOF
 exception NoExpression
 
-structure Tokenizer =
-struct
-  type t = {get : unit -> char, buffer : char list ref}
+infix 7 <|>
+infix 8 <*
+infix 8 *>
+infix 9 <$>
 
-  exception EOF
+fun error exn getc chan = raise exn
 
-  fun negate b = fn x  => not (b x)
-  fun or b1 b2 = fn x  => b1 x orelse b2 x
-  fun equal c1 = fn c2 => c1 = c2
+fun (f <$> g) getc chan =
+  case g getc chan of
+  SOME (v, rest) => SOME (f v, rest)
+| NONE           => NONE
 
-  fun whitespace c = c = #" " orelse c = #"\n" orelse c = #"\r" orelse c = #"\t"
-  fun bracket c    = c = #"(" orelse c = #")"
-  fun nl c         = c = #"\r" orelse c = #"\n"
+fun (f <|> g) getc chan =
+  case f getc chan of
+  SOME (v1, rest) => SOME (v1, rest)
+| NONE            =>
+  case g getc chan of
+  SOME (v2, rest) => SOME (v2, rest)
+| NONE            => NONE
 
-  val special = or whitespace bracket
+fun (f <* g) getc chan =
+  case f getc chan of
+  NONE           => NONE
+| SOME (v, rest) => case g getc rest of
+  NONE           => NONE
+| SOME (_, fin)  => SOME (v, fin)
 
-  fun ofStream chan = {buffer = ref [], get = fn () => case TextIO.input1 chan of SOME c => c | NONE => raise EOF}
+fun (f *> g) getc chan =
+  case f getc chan of
+  NONE           => NONE
+| SOME (_, rest) => case g getc rest of
+  NONE           => NONE
+| SOME (v, fin)  => SOME (v, fin)
 
-  fun ofString s =
-  let
-    val i = ref 0
-    val length = String.size s
-  in
-    {buffer = ref [], get = fn () =>
-      let
-        val j = !i
-      in
-        i := j + 1;
-        if j < length then
-          String.sub (s, j)
-        else raise EOF
-      end}
-  end
-
-  fun push {buffer, get} c = (buffer := c :: !buffer)
-
-  fun pop {buffer, get} = case !buffer of
-    c :: cs => (buffer := cs; c)
-  |   []    => get ()
-
-  fun until t sep =
-  let
-    val retval = ref []
-
-    fun content () = String.implode (List.rev (! retval))
-
-    fun loop c =
-      if sep c then (SOME c, content ())
-      else (retval := c :: !retval; loop (pop t))
-      handle EOF => (NONE, content ())
-  in
-    loop (pop t)
-  end
-
-  fun discard t f =
-  let
-    val c = pop t
-  in
-    if f c then discard t f else push t c
-  end
-
-  val next =
-  let
-    fun loop t = case pop t of
-      #"("  => Lparen
-    | #")"  => Rparen
-    | #";"  => (discard t (negate nl); loop t)
-    | #"\"" => let val (c, x) = until t (equal #"\"") in if Option.isSome c then Literal x else raise UnexpectedEOF end
-    | #"'"  => Quote
-    | c     => if whitespace c then loop t else (push t c; let val (c, x) = until t special in (Option.app (push t) c; Ident x) end)
-  in
-    fn t => loop t handle EOF => Eof
-  end
+fun manyUntil f g getc =
+let
+  fun loop acc chan = case g getc chan of
+    SOME ((), rest) => SOME (List.rev acc, rest)
+  | NONE            => case f getc chan of
+    NONE            => NONE
+  | SOME (v, chan') => loop (v :: acc) chan'
+in
+  loop []
 end
+
+fun pure v getc chan = SOME (v, chan)
+fun fail getc chan = NONE
+
+fun stop getc chan = NONE
+
+fun eof getc chan = case getc chan of NONE => SOME ((), chan) | SOME _ => NONE
+
+fun ch c1 getc chan = case getc chan of
+  SOME (c2, rest) => if c1 = c2 then SOME ((), rest) else NONE
+| NONE            => NONE
+
+fun lookahead f getc chan = case getc chan of
+  SOME (c, _) => if f c then SOME ((), chan) else NONE
+| NONE        => NONE
+
+fun negate b = fn x  => not (b x)
+fun or b1 b2 = fn x  => b1 x orelse b2 x
+fun equal c1 = fn c2 => c1 = c2
+
+fun until f getc chan = SOME (StringCvt.splitl (negate f) getc chan)
+fun until1 f getc chan = case StringCvt.splitl (negate f) getc chan of ("", _) => NONE | w => SOME w
+
+fun dropBefore f g getc chan = g getc (StringCvt.dropl f getc chan)
+
+fun dropAfter f g getc chan = case g getc chan of
+  NONE           => NONE
+| SOME (v, rest) => SOME (v, StringCvt.dropl f getc rest)
+
+fun fix p getc chan = p (fix p) getc chan
 
 structure Reader =
 struct
-  fun numeral x =
-    case Int.fromString x of SOME z => Int z | NONE =>
-    case Real.fromString x of SOME r => Real r | NONE => Symbol x
+  fun quoteImpl e = List [Lambda (fn _ => e)]
 
   val ident = fn
     "false" => Bool false
   | "true"  => Bool true
   | "nil"   => Expr.eps
-  | x       => numeral x
+  | x       => Symbol x
 
-  fun constImpl e = List [Lambda (fn _ => e)]
+  fun cstring x = case String.fromCString x of
+    NONE   => raise (InvalidEscape x)
+  | SOME y => String y
 
-  fun expr t =
+  fun bracket c = c = #"(" orelse c = #")"
+  fun nl c      = c = #"\r" orelse c = #"\n"
+
+  fun expr () =
   let
-    fun loop tok = case tok of
-      Eof       => NONE
-    | Lparen    => SOME (List (many ()))
-    | Rparen    => raise MismatchedBracket
-    | Ident x   => SOME (ident x)
-    | Literal x => (case String.fromString x of NONE => raise (InvalidEscape x) | SOME y => SOME (String y))
-    | Quote     => case loop (Tokenizer.next t) of
-        NONE   => NONE
-      | SOME e => SOME (constImpl e)
+    val special = or Char.isSpace bracket
+    val sep = lookahead special <|> eof
 
-    and many () = case Tokenizer.next t of
-      Rparen => []
-    | tok    => case loop tok of
-        SOME e => e :: many ()
-      | NONE   => raise UnexpectedEOF
+    val skipWS = dropBefore Char.isSpace
+
+    fun loop p =
+        (ch #")"  *> error MismatchedBracket)
+    <|> (ch #";"  *> dropBefore (negate nl) (skipWS p))
+    <|> (ch #"("  *> List <$> manyUntil (dropAfter Char.isSpace p) (ch #")"))
+    <|> (ch #"\"" *> cstring <$> until (equal #"\"") <* ch #"\"")
+    <|> (ch #"'"  *> quoteImpl <$> skipWS p)
+    <|> (Int     <$> Int.scan StringCvt.DEC <* sep)
+    <|> (Real    <$> Real.scan <* sep)
+    <|> (ident   <$> until1 special)
+    <|> (eof      *> error UnexpectedEOF)
   in
-    loop (Tokenizer.next t)
+    skipWS (fix loop)
+  end
+
+  fun iter f g getc =
+  let
+    fun loop chan = case f getc chan of
+      NONE            => SOME ((), chan)
+    | SOME (v, chan') => (g v; loop chan')
+  in
+    loop
   end
 end

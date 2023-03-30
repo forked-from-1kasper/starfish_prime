@@ -1,36 +1,26 @@
-fun repl E prompt =
-let
-  val t = Tokenizer.ofStream TextIO.stdIn
+fun println x = (print x; print "\n")
+val printexc = println o Exception.show
 
-  fun loop () =
-    (prompt (); case Reader.expr t of
-      SOME e => (print (Expr.show (Expr.eval E e) ^ "\n"); loop ())
-    | NONE   => ())
-    handle ex => (print (Exception.show ex ^ "\n"); loop ())
+local
+  fun scan g chan = ignore (TextIO.scanStream (Reader.iter (Reader.expr ()) g) chan)
 in
-  loop ()
-end
+  fun repl E =
+    scan (println o Expr.show o Expr.eval E) TextIO.stdIn
+    handle UnexpectedEOF => () | exn => (printexc exn; repl E)
 
-fun load E filename =
-let
-  val chan = TextIO.openIn filename
-  val t = Tokenizer.ofStream chan
-
-  fun loop () =
-    (case Reader.expr t of
-      SOME e => (ignore (Expr.eval E e); loop ())
-    | NONE   => ())
-    handle ex => print (Exception.show ex ^ "\n")
-in
-  loop (); TextIO.closeIn chan
+  fun load E filename =
+  let
+    val chan = TextIO.openIn filename
+  in
+    scan (ignore o Expr.eval E) chan
+    handle UnexpectedEOF => () | exn => printexc exn;
+    TextIO.closeIn chan
+  end
 end
 
 val () =
 let
   val E = Environment.init (Dict.empty ())
-  val tokenizer = Tokenizer.ofStream TextIO.stdIn
 in
-  upload E builtin;
-  List.app (load E) (CommandLine.arguments ());
-  repl E (fn () => print "LISP> ")
+  upload E builtin; List.app (load E) (CommandLine.arguments ()); repl E
 end

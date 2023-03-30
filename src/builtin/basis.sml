@@ -1,5 +1,5 @@
 val equal    = binary (fn (_, e1, e2) => Bool (Expr.equal e1 e2))
-val define   = binary (fn (E, e1, e2) => (Environment.upGlobal E (Expr.getSymbol e1) (Expr.eval E e2); Expr.eps))
+val define   = binary (fn (E, e1, e2) => (Environment.upGlobal E (Expr.getSymbol e1) (Expr.eval E e2); e1))
 val evalImpl = unary (fn (E, e) => Expr.eval E e)
 
 fun idfun x = x
@@ -95,13 +95,11 @@ val typeofImpl = unary (fn (_, e) => Symbol (Expr.typeof e))
 fun readImpl ctx stxs =
 let
   val t = case stxs of
-    []  => Tokenizer.ofStream TextIO.stdIn
-  | [e] => Tokenizer.ofString (Expr.getString e)
+    []  => TextIO.scanStream (Reader.expr ()) TextIO.stdIn
+  | [e] => StringCvt.scanString (Reader.expr ()) (Expr.getString e)
   | es  => raise (TooManyParams es)
 in
-  case Reader.expr t of
-    SOME retval => retval
-  | NONE        => raise NoExpression
+  case t of SOME e => e | NONE => raise NoExpression
 end
 
 fun postulate ident = (eager o unary) (fn (_, e) => Theorem (ident, Expr.getFormula e))
@@ -112,7 +110,7 @@ fun deftheory E = fn
 let
   val E' = Environment.upLocal E "postulate" (postulate (Expr.getSymbol e))
 in
-  List.app (ignore o (Expr.eval E')) es; Expr.eps
+  List.app (ignore o (Expr.eval E')) es; e
 end
 
 val var    = unary   (fn (_, e)          => Formula (Var (Expr.getString e)))
