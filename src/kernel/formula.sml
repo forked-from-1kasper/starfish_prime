@@ -7,6 +7,7 @@ datatype formula =
 
 exception Failure      of string
 exception InvalidSubst of string * formula * formula
+exception Unify        of formula * formula
 
 structure Formula =
 struct
@@ -91,18 +92,18 @@ struct
   | Binder (b, z, t) => Binder (b, exchange x y z, interchange x y t)
 
   fun unify ss t1 t2 =
-    case (t1, t2) of
+  case (t1, t2) of
     (Var x, t) =>
     (case Dict.get x ss of
-      SOME e => if equal t e then ss else raise (Failure "unify")
+      SOME e => if equal t e then ss else raise (Unify (t1, t2))
     | NONE   => Dict.add x t ss)
   | (App (f1, ts1), App (f2, ts2)) =>
     if f1 = f2 then ListPair.foldlEq (fn (t1, t2, ss) => unify ss t1 t2) ss (ts1, ts2)
-    else raise (Failure "unify")
+    else raise (Unify (t1, t2))
   | (Binder (b1, x, e1), Binder (b2, y, e2)) =>
     if b1 = b2 then (case Dict.get x ss of
         SOME _ => raise (Failure "unify")
       | NONE   => unify (Dict.add x (Var y) ss) e1 e2)
-    else raise (Failure "unify")
-  | (_, _) => raise (Failure "unify")
+    else raise (Unify (t1, t2))
+  | (_, _) => raise (Unify (t1, t2))
 end
