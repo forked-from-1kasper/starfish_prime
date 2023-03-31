@@ -80,8 +80,6 @@ fun fix P get T = P (fix P) get T
 
 structure Reader =
 struct
-  fun quoteImpl e = List [Lambda (fn _ => e)]
-
   val ident = fn
     "false" => Bool false
   | "true"  => Bool true
@@ -107,7 +105,7 @@ struct
     <|> (ch #";"  *> dropBefore (negate nl) (skipWS P))
     <|> (ch #"("  *> List <$> manyUntil (dropAfter Char.isSpace P) (ch #")"))
     <|> (ch #"\"" *> fromCString <$> until (equal #"\"") <* ch #"\"")
-    <|> (ch #"'"  *> quoteImpl <$> skipWS P)
+    <|> (ch #"'"  *> Quote <$> skipWS P)
     <|> (Int     <$> Int.scan StringCvt.DEC <* sep)
     <|> (Real    <$> Real.scan <* sep)
     <|> (ident   <$> until1 special)

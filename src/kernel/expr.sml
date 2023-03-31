@@ -4,6 +4,7 @@ datatype expr =
   Lambda  of closure
 | List    of expr list
 | Symbol  of string
+| Quote   of expr (* Quote E ~ List [Lambda (fn (_, _) => E)] *)
 | String  of string
 | Real    of real
 | Int     of int
@@ -48,6 +49,7 @@ struct
     Lambda _       => "#<CLOSURE>"
   | Symbol x       => x
   | List vs        => "(" ^ String.concatWith " " (List.map show vs) ^ ")"
+  | Quote e        => "'" ^ show e
   | String x       => "\"" ^ String.toCString x ^ "\""
   | Real x         => Real.toString x
   | Int x          => Int.toString x
@@ -65,6 +67,7 @@ struct
     Lambda _   => "closure"
   | Symbol _   => "symbol"
   | List _     => "list"
+  | Quote _    => "quote"
   | String _   => "string"
   | Real _     => "real"
   | Int _      => "int"
@@ -76,6 +79,7 @@ struct
   val getList    = fn List xs        => xs | e => raise (TypeMismatch (e, ["list"]))
   val getString  = fn String x       => x  | e => raise (TypeMismatch (e, ["string"]))
   val getSymbol  = fn Symbol x       => x  | e => raise (TypeMismatch (e, ["symbol"]))
+  val getQuote   = fn Quote e        => e  | e => raise (TypeMismatch (e, ["quote"]))
   val getLam     = fn Lambda f       => f  | e => raise (TypeMismatch (e, ["closure"]))
   val getRef     = fn Ref r          => r  | e => raise (TypeMismatch (e, ["reference"]))
   val getTheorem = fn Theorem (_, t) => t  | e => raise (TypeMismatch (e, ["theorem"]))
@@ -89,6 +93,7 @@ struct
     (Lambda f1,        Lambda f2)        => false
   | (Formula t1,       Formula t2)       => Formula.equal t1 t2
   | (Theorem (x1, t1), Theorem (x2, t2)) => x1 = x2 andalso Formula.equal t1 t2
+  | (Quote e1,         Quote e2)         => equal e1 e2
   | (List l1,          List l2)          => equals l1 l2
   | (Symbol x1,        Symbol x2)        => x1 = x2
   | (String s1,        String s2)        => s1 = s2
@@ -110,6 +115,7 @@ struct
       List (t :: ts) => getLam (eval E t) (E, ts)
     | List []        => eps
     | Symbol x       => Environment.get E x
+    | Quote e        => e
     | t              => t
 
     fun pong ex = (print ("\226\134\180\n  " ^ show e ^ "\n"); raise ex)
