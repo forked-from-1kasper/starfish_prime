@@ -33,6 +33,7 @@
       nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
 (defmacro DICT σ (list 'dict (cons 'list σ)))
+(defmacro SET  σ (list 'set  (cons 'list σ)))
 
 ;;;;
 
