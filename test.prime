@@ -14,8 +14,6 @@
 (defun odd-elements  (xs) (if (= xs nil) nil (cons (car xs)  (odd-elements  (cddr xs)))))
 (defun even-elements (xs) (if (= xs nil) nil (cons (cadr xs) (even-elements (cddr xs)))))
 
-;(defun mapcar (φ xs) (if (= xs nil) nil (cons (φ (car xs)) (mapcar φ (cdr xs)))))
-
 (defun semiquote/eager (ε)
   (if (= (typeof ε) 'list)
       (if (= (car ε) 'unquote)
