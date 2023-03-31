@@ -128,8 +128,9 @@ val app    = binary  (fn (_, e1, e2)     => Formula (App (Expr.getString e1, Lis
 val binder = ternary (fn (_, e1, e2, e3) => Formula (Binder (Expr.getString e1, Expr.getString e2, Expr.getFormula e3)))
 
 fun set bag = List (List.map String (Bag.fold (fn x => fn xs => x :: xs) bag []))
-val fvImpl = unary (fn (_, e) => set (Formula.fv (Expr.getFormula e)))
-val bvImpl = unary (fn (_, e) => set (Formula.bv (Expr.getFormula e)))
+
+val fvImpl = unary (fn (_, e) => Set (Formula.fv (Expr.getFormula e)))
+val bvImpl = unary (fn (_, e) => Set (Formula.bv (Expr.getFormula e)))
 
 val freeImpl  = binary (fn (_, e1, e2) => Bool (Formula.free  (Expr.getString e1) (Expr.getFormula e2)))
 val boundImpl = binary (fn (_, e1, e2) => Bool (Formula.bound (Expr.getString e1) (Expr.getFormula e2)))
@@ -148,6 +149,9 @@ in
   loop (Dict.empty ())
 end
 
+val setImpl  = unary (fn (_, e) => Set (List.foldl (fn (x, t) => Bag.add (Expr.getString x) t) (Bag.empty ()) (Expr.getList e)))
+val dictImpl = unary (fn (_, e) => Dict (dict Expr.getString idfun (Expr.getList e)))
+
 val interchangeImpl = ternary
   (fn (_, e1, e2, e3) =>
   let
@@ -158,16 +162,8 @@ val interchangeImpl = ternary
     Formula (Formula.interchange x y t)
   end)
 
-val substImpl =
-let
-  val getDict = (dict Expr.getString Expr.getFormula) o Expr.getList
-in
-  binary (fn (_, e1, e2) => Formula (Formula.subst (getDict e1) (Expr.getFormula e2)))
-end
-
-val unifyImpl = binary (fn (_, e1, e2) =>
-  List (Dict.fold (fn k => fn v => fn vs => List [String k, Formula v] :: vs)
-                  (Formula.unify (Dict.empty ()) (Expr.getFormula e1) (Expr.getFormula e2)) []))
+val substImpl = binary (fn (_, e1, e2) => Formula (Formula.subst (Dict.map Expr.getFormula (Expr.getDict e1)) (Expr.getFormula e2)))
+val unifyImpl = binary (fn (_, e1, e2) => Dict (Dict.map Formula (Formula.unify (Dict.empty ()) (Expr.getFormula e1) (Expr.getFormula e2))))
 
 fun caseImpl E =
 let
@@ -213,6 +209,9 @@ val builtin =
  ("cdr",            eager cdr),
  ("length",         eager lengthImpl),
  ("nth",            eager nth),
+ (* Dict/Set *)
+ ("set",            eager setImpl),
+ ("dict",           eager dictImpl),
  (* Arithmetics *)
  ("+",              addImpl),
  ("*",              mulImpl),

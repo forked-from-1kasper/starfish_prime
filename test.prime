@@ -32,6 +32,8 @@
     (list 'if (list '= (list 'formula name) statement)
       nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
+(defmacro DICT σ (list 'dict (cons 'list σ)))
+
 ;;;;
 
 (define ⊥ (app "false" nil))
@@ -68,17 +70,17 @@
   (define ¬¬-elim (postulate (impl (¬¬ (var "α")) (var "α")))))
 
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
-(defun →-intro (P T) (mp T (invariance₁ (list "α" (formula T) "β" P) veq)))
+(defun →-intro (P T) (mp T (invariance₁ (DICT "α" (formula T) "β" P) veq)))
 
 (defthm principle-of-explosion (impl ⊥ (var "P"))
-  (mp (invariance₁ (list "α" ⊥ "β" (¬ (var "P"))) veq)
-      (mp (→-intro ⊥ (invariance₁ (list "α" (var "P")) ¬¬-elim))
-          (invariance₁ (list "α" ⊥ "β" (¬¬ (var "P")) "γ" (var "P")) cr))))
+  (mp (invariance₁ (DICT "α" ⊥ "β" (¬ (var "P"))) veq)
+      (mp (→-intro ⊥ (invariance₁ (DICT "α" (var "P")) ¬¬-elim))
+          (invariance₁ (DICT "α" ⊥ "β" (¬¬ (var "P")) "γ" (var "P")) cr))))
 
 (defthm I (impl (var "α") (var "α"))
-  (mp (invariance₁ (list "β" (var "α")) veq)
-      (mp (invariance₁ (list "β" (impl (var "α") (var "α"))) veq)
-          (invariance₁ (list "γ" (var "α") "β" (impl (var "α") (var "α"))) cr))))
+  (mp (invariance₁ (DICT "β" (var "α")) veq)
+      (mp (invariance₁ (DICT "β" (impl (var "α") (var "α"))) veq)
+          (invariance₁ (DICT "γ" (var "α") "β" (impl (var "α") (var "α"))) cr))))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
 (defun dup (T) (→-intro (proj (formula T) 0) T))
@@ -86,46 +88,46 @@
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun pop (T)
   (case (formula T) (impl (var "P") (impl (var "P") (var "Q")))
-    (mp (invariance₁ (list "α" P) I)
-        (mp T (invariance₁ (list "α" P "β" P "γ" Q) cr)))))
+    (mp (invariance₁ (DICT "α" P) I)
+        (mp T (invariance₁ (DICT "α" P "β" P "γ" Q) cr)))))
 
 (defthm cut (impl (var "P") (impl (impl (var "P") (var "Q")) (var "Q")))
   (let (T₁ (→-intro (var "P")
-             (mp (invariance₁ (list "α" (impl (var "P") (var "Q"))) I)
-                 (invariance₁ (list "α" (impl (var "P") (var "Q"))
+             (mp (invariance₁ (DICT "α" (impl (var "P") (var "Q"))) I)
+                 (invariance₁ (DICT "α" (impl (var "P") (var "Q"))
                                     "β" (var "P")
                                     "γ" (var "Q")) cr)))
-        T₂ (invariance₁ (list "α" (var "P")
+        T₂ (invariance₁ (DICT "α" (var "P")
                               "β" (impl (impl (var "P") (var "Q")) (var "P"))
                               "γ" (impl (impl (var "P") (var "Q")) (var "Q"))) cr)
-        T₃ (invariance₁ (list "α" (var "P")
+        T₃ (invariance₁ (DICT "α" (var "P")
                               "β" (impl (var "P") (var "Q"))) veq))
     (mp T₃ (mp T₁ T₂))))
 
 (defthm ¬¬-intro (impl (var "α") (¬¬ (var "α")))
-  (invariance₁ (list "P" (var "α") "Q" ⊥) cut))
+  (invariance₁ (DICT "P" (var "α") "Q" ⊥) cut))
 
 (defthm →-comm (impl (impl (var "P") (impl (var "Q") (var "R")))
                      (impl (var "Q") (impl (var "P") (var "R"))))
-  (let (T₁ (mp (invariance₁ (list "P" (var "Q") "Q" (var "R")) cut)
-               (mp (→-intro (var "Q") (invariance₁ (list "α" (impl (impl (var "Q") (var "R")) (var "R"))
+  (let (T₁ (mp (invariance₁ (DICT "P" (var "Q") "Q" (var "R")) cut)
+               (mp (→-intro (var "Q") (invariance₁ (DICT "α" (impl (impl (var "Q") (var "R")) (var "R"))
                                                          "β" (var "P")) veq))
-                   (invariance₁ (list "α" (var "Q")
+                   (invariance₁ (DICT "α" (var "Q")
                                       "β" (impl (impl (var "Q") (var "R")) (var "R"))
                                       "γ" (impl (var "P") (impl (impl (var "Q") (var "R")) (var "R")))) cr)))
-        T₂ (→-intro (var "Q") (invariance₁ (list "α" (var "P")
+        T₂ (→-intro (var "Q") (invariance₁ (DICT "α" (var "P")
                                                  "β" (impl (var "Q") (var "R"))
                                                  "γ" (var "R")) cr))
-        T₃ (invariance₁ (list "α" (var "Q")
+        T₃ (invariance₁ (DICT "α" (var "Q")
                               "β" (impl (var "P") (impl (impl (var "Q") (var "R")) (var "R")))
                               "γ" (impl (impl (var "P") (impl (var "Q") (var "R"))) (impl (var "P") (var "R")))) cr)
-        T₄ (invariance₁ (list "α" (var "Q")
+        T₄ (invariance₁ (DICT "α" (var "Q")
                               "β" (impl (var "P") (impl (var "Q") (var "R")))
                               "γ" (impl (var "P") (var "R"))) cr)
-        T₅ (invariance₁ (list "α" (impl (var "P") (impl (var "Q") (var "R")))
+        T₅ (invariance₁ (DICT "α" (impl (var "P") (impl (var "Q") (var "R")))
                               "β" (impl (var "Q") (impl (var "P") (impl (var "Q") (var "R"))))
                               "γ" (impl (var "Q") (impl (var "P") (var "R")))) cr)
-        T₆ (invariance₁ (list "α" (impl (var "P") (impl (var "Q") (var "R")))
+        T₆ (invariance₁ (DICT "α" (impl (var "P") (impl (var "Q") (var "R")))
                               "β" (var "Q")) veq))
     (mp T₆ (mp (→-intro (impl (var "P") (impl (var "Q") (var "R"))) (mp (mp T₁ (mp T₂ T₃)) T₄)) T₅))))
 
@@ -133,16 +135,16 @@
 (defthm hypsyll (impl (impl (var "Q") (var "R"))
                       (impl (impl (var "P") (var "Q"))
                             (impl (var "P") (var "R"))))
-  (let (T₁ (mp (invariance₁ (list "α" (var "P") "β" (var "Q") "γ" (var "R")) cr)
-               (invariance₁ (list "α" (impl (impl (var "P") (impl (var "Q") (var "R")))
+  (let (T₁ (mp (invariance₁ (DICT "α" (var "P") "β" (var "Q") "γ" (var "R")) cr)
+               (invariance₁ (DICT "α" (impl (impl (var "P") (impl (var "Q") (var "R")))
                                                    (impl (impl (var "P") (var "Q"))
                                                          (impl (var "P") (var "R"))))
                                          "β" (impl (var "Q") (var "R"))) veq))
-        T₂ (invariance₁ (list "α" (impl (var "Q") (var "R"))
+        T₂ (invariance₁ (DICT "α" (impl (var "Q") (var "R"))
                               "β" (impl (var "P") (impl (var "Q") (var "R")))
                               "γ" (impl (impl (var "P") (var "Q"))
                                         (impl (var "P") (var "R")))) cr)
-        T₃ (invariance₁ (list "α" (impl (var "Q") (var "R"))
+        T₃ (invariance₁ (DICT "α" (impl (var "Q") (var "R"))
                               "β" (var "P")) veq))
     (mp T₃ (mp T₁ T₂))))
 
@@ -154,12 +156,12 @@
 (define ∃ (λ (x P) (binder "∃" x P)))
 
 (define τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
-;(print (subst (list "x" (var "y")) τ₀) "\n") ; will emit an error
-(print (subst (list "x" (var "z")) τ₀) "\n")
+;(print (subst (DICT "x" (var "y")) τ₀) "\n") ; will emit an error
+(print (subst (DICT "x" (var "z")) τ₀) "\n")
 
 (print veq " & " (formula veq) "\n")
 
-(print (invariance₁ (list "α" (var "A")) I) "\n")
+(print (invariance₁ (DICT "α" (var "A")) I) "\n")
 (print ¬¬-elim "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))

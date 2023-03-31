@@ -25,7 +25,7 @@ signature DICT =
 sig
   type key
   type 'a t
-
+  
   val empty     : unit -> 'a t
   val isEmpty   : 'a t -> bool
   val add       : key -> 'a -> 'a t -> 'a t

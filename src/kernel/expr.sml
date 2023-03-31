@@ -10,6 +10,8 @@ datatype expr =
 | Int     of int
 | Bool    of bool
 | Ref     of expr ref
+| Dict    of expr dict
+| Set     of bag
 | Formula of formula
 | Theorem of string * formula
 withtype closure = expr environment * expr list -> expr
@@ -45,17 +47,21 @@ structure Expr =
 struct
   type t = expr
 
+  fun quote x = "\"" ^ x ^ "\""
+
   val rec show = fn
     Lambda _       => "#<CLOSURE>"
   | Symbol x       => x
   | List vs        => "(" ^ String.concatWith " " (List.map show vs) ^ ")"
   | Quote e        => "'" ^ show e
-  | String x       => "\"" ^ String.toCString x ^ "\""
+  | String x       => quote (String.toCString x)
   | Real x         => Real.toString x
   | Int x          => Int.toString x
   | Bool true      => "true"
   | Bool false     => "false"
   | Ref _          => "#<REFERENCE>"
+  | Dict t         => "#<DICT" ^ Dict.fold (fn k => fn v => fn xs => xs ^ " " ^ quote (String.toCString k) ^ " " ^ show v) t "" ^ ">"
+  | Set t          => "#<SET" ^ Bag.fold (fn x => fn xs => xs ^ " " ^ quote (String.toCString x)) t "" ^ ">"
   | Formula t      => "#<FORMULA " ^ Formula.show t ^ ">"
   | Theorem (x, t) => "#<THEOREM \"" ^ x ^ "\" " ^ Formula.show t ^ ">"
 
@@ -73,6 +79,8 @@ struct
   | Int _      => "int"
   | Bool _     => "bool"
   | Ref _      => "ref"
+  | Dict _     => "dict"
+  | Set _      => "set"
   | Formula _  => "formula"
   | Theorem _  => "theorem"
 
@@ -88,10 +96,11 @@ struct
   val getBool    = fn Bool b         => b  | e => raise (TypeMismatch (e, ["bool"]))
   val getInt     = fn Int z          => z  | e => raise (TypeMismatch (e, ["int"]))
   val getFloat   = fn Real r         => r  | e => raise (TypeMismatch (e, ["real"]))
+  val getDict    = fn Dict t         => t  | e => raise (TypeMismatch (e, ["dict"]))
+  val getSet     = fn Set t          => t  | e => raise (TypeMismatch (e, ["set"]))
 
   fun equal e1 e2 = case (e1, e2) of
-    (Lambda f1,        Lambda f2)        => false
-  | (Formula t1,       Formula t2)       => Formula.equal t1 t2
+    (Formula t1,       Formula t2)       => Formula.equal t1 t2
   | (Theorem (x1, t1), Theorem (x2, t2)) => x1 = x2 andalso Formula.equal t1 t2
   | (Quote e1,         Quote e2)         => equal e1 e2
   | (List l1,          List l2)          => equals l1 l2
