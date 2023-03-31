@@ -1,5 +1,19 @@
 fun upload E = List.app (fn (k, v) => Environment.upGlobal E k v)
 
+fun getUnary E e0 =
+let
+  val f = Expr.getLam e0
+in
+  fn e => f (E, [Quote e])
+end
+
+fun getBinary E e0 =
+let
+  val f = Expr.getLam e0
+in
+  fn (e1, e2) => f (E, [Quote e1, Quote e2])
+end
+
 fun nulary f E = fn
   [] => f E
 | xs => raise (InvalidArity (0, List.length xs))

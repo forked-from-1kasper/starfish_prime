@@ -74,9 +74,17 @@ val cdr = unary
     | (_, Formula t) => List (List.map Formula (Formula.params t))
     | (_, e)         => raise (TypeMismatch (e, ["list", "formula"])))
 
-val consImpl   = binary (fn (ctx, e1, e2) => List (e1 :: Expr.getList e2))
-val nth        = binary (fn (_, e1, e2) => List.nth (Expr.getList e2, Expr.getInt e1))
-val lengthImpl = unary  (fn (ctx, e) => Int (List.length (Expr.getList e)))
+val lengthImpl = unary
+  (fn (_, List xs)  => Int (List.length xs)
+    | (_, String x) => Int (String.size x)
+    | (_, e)        => raise (TypeMismatch (e, ["list", "string"])))
+
+val consImpl   = binary  (fn (_, e1, e2)     => List (e1 :: Expr.getList e2))
+val nth        = binary  (fn (_, e1, e2)     => List.nth (Expr.getList e2, Expr.getInt e1))
+val mapcarImpl = binary  (fn (E, e1, e2)     => List (List.map (getUnary E e1) (Expr.getList e2)))
+val dolistImpl = binary  (fn (E, e1, e2)     => (List.app (ignore o getUnary E e1) (Expr.getList e2); Expr.eps))
+val foldlImpl  = ternary (fn (E, e1, e2, e3) => List.foldl (getBinary E e1) e2 (Expr.getList e3))
+val foldrImpl  = ternary (fn (E, e1, e2, e3) => List.foldr (getBinary E e1) e2 (Expr.getList e3))
 
 val refImpl    = unary  (fn (_, e)      => Ref (ref e))
 val derefImpl  = unary  (fn (_, e)      => !(Expr.getRef e))
@@ -87,14 +95,14 @@ val printExpr = fn
 | String s => s
 | e        => Expr.show e
 
-fun fail ctx xs = raise (Failure (String.concatWith " " (List.map printExpr xs)))
+fun fail E xs = raise (Failure (String.concatWith " " (List.map printExpr xs)))
 
 val printImpl   = fn E => fn e => (List.app (print o printExpr) e; Expr.eps)
 val newlineImpl = nulary (fn E => (print "\n"; Expr.eps))
 
 val typeofImpl = unary (fn (_, e) => Symbol (Expr.typeof e))
 
-fun readImpl ctx stxs =
+fun readImpl E stxs =
 let
   val t = case stxs of
     []  => TextIO.scanStream Reader.expr TextIO.stdIn
@@ -184,6 +192,10 @@ val builtin =
  ("macro",          macro),
  ("define",         special define),
  ("list",           eager (const List)),
+ ("mapcar",         eager mapcarImpl),
+ ("dolist",         eager dolistImpl),
+ ("foldl",          eager foldlImpl),
+ ("foldr",          eager foldrImpl),
  ("quote",          special (unary (fn (_, e) => e))),
  ("symbol",         eager symbolImpl),
  ("eval",           eager evalImpl),
