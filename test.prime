@@ -1,12 +1,12 @@
-(define cadr   (lambda (xs) (car (cdr xs))))
-(define cddr   (lambda (xs) (cdr (cdr xs))))
-(define caddr  (lambda (xs) (car (cdr (cdr xs)))))
-(define cdddr  (lambda (xs) (car (cdr (cdr xs)))))
-(define cadddr (lambda (xs) (car (cdr (cdr (cdr xs))))))
-(define cddddr (lambda (xs) (cdr (cdr (cdr (cdr xs))))))
+(define cadr   (λ (xs) (car (cdr xs))))
+(define cddr   (λ (xs) (cdr (cdr xs))))
+(define caddr  (λ (xs) (car (cdr (cdr xs)))))
+(define cdddr  (λ (xs) (car (cdr (cdr xs)))))
+(define cadddr (λ (xs) (car (cdr (cdr (cdr xs))))))
+(define cddddr (λ (xs) (cdr (cdr (cdr (cdr xs))))))
 
-(define defun    (macro exprs (list 'define (car exprs) (cons 'lambda (cons (cadr exprs) (cddr exprs))))))
-(define defmacro (macro exprs (list 'define (car exprs) (cons 'macro  (cons (cadr exprs) (cddr exprs))))))
+(define defun    (macro σ (list 'define (car σ) (cons 'λ (cons (cadr σ) (cddr σ))))))
+(define defmacro (macro σ (list 'define (car σ) (cons 'macro  (cons (cadr σ) (cddr σ))))))
 
 (defun idfun (x) x)
 (defun const (x y) x)
@@ -26,7 +26,7 @@
 (defmacro semiquote σ (semiquote/eager σ))
 
 (defmacro let σ
-  (cons (cons 'lambda (cons (odd-elements (car σ)) (cdr σ)))
+  (cons (cons 'λ (cons (odd-elements (car σ)) (cdr σ)))
         (even-elements (car σ))))
 
 (defmacro defthm (name statement proof)
@@ -50,7 +50,7 @@
 
 (deftheory ZOL ;; zeroth-order logic
   (defmacro well-founded? σ
-    (list 'if (cons 'and (mapcar (lambda (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
+    (list 'if (cons 'and (mapcar (λ (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
       (list 'fail "expected formula of zeroth-order logic")))
 
   (defun invariance₁ (θ T)   (well-founded? T) (postulate (subst θ (formula T))))
@@ -153,7 +153,7 @@
 (defthm test-thm (impl (var "B") (var "B"))
   (invariance₂ "α" "B" I))
 
-(define ∃ (lambda (x P) (binder "∃" x P)))
+(define ∃ (λ (x P) (binder "∃" x P)))
 
 (define τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
 ;(print (subst (list "x" (var "y")) τ₀) "\n") ; will emit an error
@@ -173,7 +173,7 @@
         (not (= (deref n) 5))))
 (newline)
 
-(define generate-macro (lambda (name) (macro (y) (list '+ name y))))
+(define generate-macro (λ (name) (macro (y) (list '+ name y))))
 
 (print "fin")
 (newline)
