@@ -1,3 +1,6 @@
+(* https://github.com/ocaml/ocaml/blob/trunk/stdlib/map.ml
+   https://github.com/ocaml/ocaml/blob/trunk/stdlib/set.ml *)
+
 functor BST (A : LINORD) : DICT =
 struct
   type key = A.t
