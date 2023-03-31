@@ -2,18 +2,18 @@ fun println x = (print x; print "\n")
 val printexc = println o Exception.show
 
 local
-  fun scan g chan = ignore (TextIO.scanStream (Reader.iter (Reader.expr ()) g) chan)
+  fun scan g = ignore o TextIO.scanStream (Reader.iter Reader.expr g)
 in
   fun repl E =
     scan (println o Expr.show o Expr.eval E) TextIO.stdIn
-    handle UnexpectedEOF => () | exn => (printexc exn; repl E)
+    handle EOF => () | exn => (printexc exn; repl E)
 
   fun load E filename =
   let
     val chan = TextIO.openIn filename
   in
     scan (ignore o Expr.eval E) chan
-    handle UnexpectedEOF => () | exn => printexc exn;
+    handle EOF => () | exn => printexc exn;
     TextIO.closeIn chan
   end
 end

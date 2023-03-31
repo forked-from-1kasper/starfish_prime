@@ -16,7 +16,7 @@ struct
   | Unify (t1, t2)           => "Unable to unify " ^ quote (Formula.show t1) ^ " with " ^ quote (Formula.show t2) ^ "."
   | InvalidEscape x          => "Invalid escape sequence in " ^ quote x ^ "."
   | MismatchedBracket        => "Mismatched bracket."
-  | UnexpectedEOF            => "Unexpected EOF."
+  | EOF                      => "Unexpected EOF."
   | NoExpression             => "No expression."
   | Failure err              => "Error: " ^ err
   | ex                       => "Uncaught exception:\n  " ^ exnMessage ex

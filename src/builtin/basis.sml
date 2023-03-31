@@ -95,8 +95,8 @@ val typeofImpl = unary (fn (_, e) => Symbol (Expr.typeof e))
 fun readImpl ctx stxs =
 let
   val t = case stxs of
-    []  => TextIO.scanStream (Reader.expr ()) TextIO.stdIn
-  | [e] => StringCvt.scanString (Reader.expr ()) (Expr.getString e)
+    []  => TextIO.scanStream Reader.expr TextIO.stdIn
+  | [e] => StringCvt.scanString Reader.expr (Expr.getString e)
   | es  => raise (TooManyParams es)
 in
   case t of SOME e => e | NONE => raise NoExpression

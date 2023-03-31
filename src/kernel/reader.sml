@@ -1,82 +1,82 @@
 exception InvalidEscape of string
 exception MismatchedBracket
-exception UnexpectedEOF
 exception NoExpression
+exception EOF
 
 infix 7 <|>
 infix 8 <*
 infix 8 *>
 infix 9 <$>
 
-fun error exn getc chan = raise exn
+fun error exn get T = raise exn
 
-fun (f <$> g) getc chan =
-  case g getc chan of
+fun (f <$> g) get T =
+  case g get T of
   SOME (v, rest) => SOME (f v, rest)
 | NONE           => NONE
 
-fun (f <|> g) getc chan =
-  case f getc chan of
+fun (f <|> g) get T =
+  case f get T of
   SOME (v1, rest) => SOME (v1, rest)
 | NONE            =>
-  case g getc chan of
+  case g get T of
   SOME (v2, rest) => SOME (v2, rest)
 | NONE            => NONE
 
-fun (f <* g) getc chan =
-  case f getc chan of
+fun (f <* g) get T =
+  case f get T of
   NONE           => NONE
-| SOME (v, rest) => case g getc rest of
+| SOME (v, rest) => case g get rest of
   NONE           => NONE
 | SOME (_, fin)  => SOME (v, fin)
 
-fun (f *> g) getc chan =
-  case f getc chan of
+fun (f *> g) get T =
+  case f get T of
   NONE           => NONE
-| SOME (_, rest) => case g getc rest of
+| SOME (_, rest) => case g get rest of
   NONE           => NONE
 | SOME (v, fin)  => SOME (v, fin)
 
-fun manyUntil f g getc =
+fun manyUntil f g get =
 let
-  fun loop acc chan = case g getc chan of
+  fun loop acc T = case g get T of
     SOME ((), rest) => SOME (List.rev acc, rest)
-  | NONE            => case f getc chan of
+  | NONE            => case f get T of
     NONE            => NONE
-  | SOME (v, chan') => loop (v :: acc) chan'
+  | SOME (v, T')    => loop (v :: acc) T'
 in
   loop []
 end
 
-fun pure v getc chan = SOME (v, chan)
-fun fail getc chan = NONE
+fun pure v get T = SOME (v, T)
+fun fail get T = NONE
 
-fun stop getc chan = NONE
+fun eof get T = case get T of NONE => SOME ((), T) | SOME _ => NONE
 
-fun eof getc chan = case getc chan of NONE => SOME ((), chan) | SOME _ => NONE
-
-fun ch c1 getc chan = case getc chan of
+fun ch c1 get T = case get T of
   SOME (c2, rest) => if c1 = c2 then SOME ((), rest) else NONE
 | NONE            => NONE
 
-fun lookahead f getc chan = case getc chan of
-  SOME (c, _) => if f c then SOME ((), chan) else NONE
+fun lookahead f get T = case get T of
+  SOME (c, _) => if f c then SOME ((), T) else NONE
 | NONE        => NONE
 
 fun negate b = fn x  => not (b x)
 fun or b1 b2 = fn x  => b1 x orelse b2 x
 fun equal c1 = fn c2 => c1 = c2
 
-fun until f getc chan = SOME (StringCvt.splitl (negate f) getc chan)
-fun until1 f getc chan = case StringCvt.splitl (negate f) getc chan of ("", _) => NONE | w => SOME w
+fun until f get T = SOME (StringCvt.splitl (negate f) get T)
 
-fun dropBefore f g getc chan = g getc (StringCvt.dropl f getc chan)
+fun until1 f get T = case StringCvt.splitl (negate f) get T of
+  ("", _) => NONE | w => SOME w
 
-fun dropAfter f g getc chan = case g getc chan of
+fun dropBefore f g get T = g get (StringCvt.dropl f get T)
+
+fun dropAfter f g get T = case g get T of
   NONE           => NONE
-| SOME (v, rest) => SOME (v, StringCvt.dropl f getc rest)
+| SOME (v, rest) => SOME (v, StringCvt.dropl f get rest)
 
-fun fix p getc chan = p (fix p) getc chan
+fun fix P get T = P (fix P) get T
 
 structure Reader =
 struct
@@ -88,39 +88,39 @@ struct
   | "nil"   => Expr.eps
   | x       => Symbol x
 
-  fun cstring x = case String.fromCString x of
+  fun fromCString x = case String.fromCString x of
     NONE   => raise (InvalidEscape x)
   | SOME y => String y
 
   fun bracket c = c = #"(" orelse c = #")"
   fun nl c      = c = #"\r" orelse c = #"\n"
 
-  fun expr () =
+  fun expr get T =
   let
     val special = or Char.isSpace bracket
     val sep = lookahead special <|> eof
 
     val skipWS = dropBefore Char.isSpace
 
-    fun loop p =
+    fun loop P =
         (ch #")"  *> error MismatchedBracket)
-    <|> (ch #";"  *> dropBefore (negate nl) (skipWS p))
-    <|> (ch #"("  *> List <$> manyUntil (dropAfter Char.isSpace p) (ch #")"))
-    <|> (ch #"\"" *> cstring <$> until (equal #"\"") <* ch #"\"")
-    <|> (ch #"'"  *> quoteImpl <$> skipWS p)
+    <|> (ch #";"  *> dropBefore (negate nl) (skipWS P))
+    <|> (ch #"("  *> List <$> manyUntil (dropAfter Char.isSpace P) (ch #")"))
+    <|> (ch #"\"" *> fromCString <$> until (equal #"\"") <* ch #"\"")
+    <|> (ch #"'"  *> quoteImpl <$> skipWS P)
     <|> (Int     <$> Int.scan StringCvt.DEC <* sep)
     <|> (Real    <$> Real.scan <* sep)
     <|> (ident   <$> until1 special)
-    <|> (eof      *> error UnexpectedEOF)
+    <|> (eof      *> error EOF)
   in
-    skipWS (fix loop)
+    skipWS (fix loop) get T
   end
 
-  fun iter f g getc =
+  fun iter f g get =
   let
-    fun loop chan = case f getc chan of
-      NONE            => SOME ((), chan)
-    | SOME (v, chan') => (g v; loop chan')
+    fun loop T = case f get T of
+      NONE         => SOME ((), T)
+    | SOME (v, T') => (g v; loop T')
   in
     loop
   end
