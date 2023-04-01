@@ -40,7 +40,7 @@ fun special f = Lambda (fn (E, e) => f E e)
 fun variadic x ys E = Environment.upLocal E x (List ys)
 
 fun uniadic xs ys E =
-  ListPair.foldl (fn (k, v, E') => Environment.upLocal E' k v) E (List.map Expr.getSymbol xs, ys)
+  ListPair.foldlEq (fn (k, v, E') => Environment.upLocal E' k v) E (List.map Expr.getSymbol xs, ys)
   handle ListPair.UnequalLengths => raise (InvalidArity (List.length xs, List.length ys))
 
 fun lambdaImpl unpack E1 body =
