@@ -13,14 +13,17 @@ structure Formula =
 struct
   type t = formula
 
+  val kind = fn
+    App _    => "app"
+  | Binder _ => "binder"
+  | Var _    => "var"
+
   val funsym = fn
     App (x, _)       => x
   | Binder (x, _, _) => x
   | _                => raise (Failure "funsym")
 
-  val params = fn
-    App (_, xs) => xs
-  | _           => raise (Failure "params")
+  val boundof = fn Binder (_, y, _) => y | _ => raise (Failure "boundof")
 
   val arity = fn
     App (_, xs) => List.length xs

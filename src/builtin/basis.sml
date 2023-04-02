@@ -70,9 +70,11 @@ val car = unary
     | (_, e)         => raise (TypeMismatch (e, ["list", "formula"])))
 
 val cdr = unary
-  (fn (_, List xs)   => List (List.tl xs)
-    | (_, Formula t) => List (List.map Formula (Formula.params t))
-    | (_, e)         => raise (TypeMismatch (e, ["list", "formula"])))
+  (fn (_, List xs)                    => List (List.tl xs)
+    | (_, Formula (App (_, ts)))      => List (List.map Formula ts)
+    | (_, Formula (Binder (_, _, t))) => Formula t
+    | (_, Formula (Var _))            => raise (Failure "cdr")
+    | (_, e)                          => raise (TypeMismatch (e, ["list", "formula"])))
 
 val lengthImpl = unary
   (fn (_, List xs)  => Int (List.length xs)
@@ -132,9 +134,11 @@ fun set bag = List (List.map String (Bag.fold (fn x => fn xs => x :: xs) bag [])
 val fvImpl = unary (fn (_, e) => Set (Formula.fv (Expr.getFormula e)))
 val bvImpl = unary (fn (_, e) => Set (Formula.bv (Expr.getFormula e)))
 
-val freeImpl  = binary (fn (_, e1, e2) => Bool (Formula.free  (Expr.getString e1) (Expr.getFormula e2)))
-val boundImpl = binary (fn (_, e1, e2) => Bool (Formula.bound (Expr.getString e1) (Expr.getFormula e2)))
-val occurImpl = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
+val freeImpl    = binary (fn (_, e1, e2) => Bool (Formula.free  (Expr.getString e1) (Expr.getFormula e2)))
+val boundImpl   = binary (fn (_, e1, e2) => Bool (Formula.bound (Expr.getString e1) (Expr.getFormula e2)))
+val occurImpl   = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
+val kindofImpl  = unary (fn (_, e) => Symbol (Formula.kind (Expr.getFormula e)))
+val boundofImpl = unary (fn (_, e) => String (Formula.boundof (Expr.getFormula e)))
 
 val formulaImpl = unary (fn (_, e) => Formula (Expr.getTheorem e))
 val theoryImpl  = unary (fn (_, e) => String (Expr.getTheory e))
@@ -232,6 +236,8 @@ val builtin =
  ("var",            eager var),
  ("app",            eager app),
  ("binder",         eager binder),
+ ("kindof",         eager kindofImpl),
+ ("boundof",        eager boundofImpl),
  ("subst",          eager substImpl),
  ("interchange",    eager interchangeImpl),
  ("fv",             eager fvImpl),
