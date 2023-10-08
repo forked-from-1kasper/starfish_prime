@@ -1,13 +1,16 @@
+fun idfun x = x
+fun const a b = a
+
+fun flip (a, b) = (b, a)
+
+fun xor a b = (a orelse b) andalso not (a andalso b)
+fun abj a b = a andalso (not b)
+
 val equal    = binary (fn (_, e1, e2) => Bool (Expr.equal e1 e2))
 val define   = binary (fn (E, e1, e2) => (Environment.upGlobal E (Expr.getSymbol e1) (Expr.eval E e2); e1))
 val evalImpl = unary (fn (E, e) => Expr.eval E e)
 
 val applyImpl = binary (fn (E, e1, e2) => Expr.getLam e1 (E, List.map Quote (Expr.getList e2)))
-
-fun idfun x = x
-fun const a b = a
-
-fun xor a b = (a orelse b) andalso not (a andalso b)
 
 local
   val plus = fn
@@ -22,18 +25,51 @@ local
   | (List xs,  List ys)  => List (xs @ ys)
   | (t1,       t2)       => raise (TypeMismatch (t1, [Expr.typeof t2]))
 
+  val negate = fn
+    Int x  => Int (~ x)
+  | Real x => Real (~ x)
+  | Bool b => Bool (not b)
+  | t      => raise (TypeMismatch (t, ["int", "real", "bool"]))
+
+  val minus = fn
+    (Int x,   Int y)   => Int (x - y)
+  | (Int x,   Real y)  => Real (Real.fromInt x - y)
+  | (Real x,  Int y)   => Real (x - Real.fromInt y)
+  | (Real x,  Real y)  => Real (x - y)
+  | (Bool b1, Bool b2) => Bool (b1 = b2)
+  | (t1,      t2)      => raise (TypeMismatch (t1, [Expr.typeof t2]))
+
   val mult = fn
-    (List [],  v)        => v
-  | (v,        List [])  => v
-  | (Int x,    Int y)    => Int (x * y)
-  | (Int x,    Real y)   => Real (Real.fromInt x * y)
-  | (Real x,   Int y)    => Real (x * Real.fromInt y)
-  | (Real x,   Real y)   => Real (x * y)
-  | (Bool b1,  Bool b2)  => Bool (b1 andalso b2)
-  | (t1,       t2)       => raise (TypeMismatch (t1, [Expr.typeof t2]))
+    (List [],  v)       => v
+  | (v,        List []) => v
+  | (Int x,    Int y)   => Int (x * y)
+  | (Int x,    Real y)  => Real (Real.fromInt x * y)
+  | (Real x,   Int y)   => Real (x * Real.fromInt y)
+  | (Real x,   Real y)  => Real (x * y)
+  | (Bool b1,  Bool b2) => Bool (b1 andalso b2)
+  | (t1,       t2)      => raise (TypeMismatch (t1, [Expr.typeof t2]))
+
+  val inverse = fn
+    Real x => Real (1.0 / x)
+  | Bool b => Bool (not b)
+  | t      => raise (TypeMismatch (t, ["real", "bool"]))
+
+  val division = fn
+    (Int x,   Int y)   => Int (x div y)
+  | (Int x,   Real y)  => Real (Real.fromInt x / y)
+  | (Real x,  Int y)   => Real (x / Real.fromInt y)
+  | (Real x,  Real y)  => Real (x / y)
+  | (Bool b1, Bool b2) => Bool (abj b1 b2)
+  | (t1,      t2)      => raise (TypeMismatch (t1, [Expr.typeof t2]))
 in
   val addImpl = eager (const (List.foldl plus Expr.eps))
+  val subImpl = eager (const (fn   []    => Expr.eps
+                               | e :: [] => negate e
+                               | e :: es => List.foldl (minus o flip) e es))
   val mulImpl = eager (const (List.foldl mult Expr.eps))
+  val divImpl = eager (const (fn   []    => Expr.eps
+                               | e :: [] => inverse e
+                               | e :: es => List.foldl (division o flip) e es))
 end
 
 val symbolImpl = unary (fn (E, e) => Symbol (Expr.getString e))
@@ -85,8 +121,27 @@ val consImpl   = binary  (fn (_, e1, e2)     => List (e1 :: Expr.getList e2))
 val nth        = binary  (fn (_, e1, e2)     => List.nth (Expr.getList e2, Expr.getInt e1))
 val mapcarImpl = binary  (fn (E, e1, e2)     => List (List.map (getUnary E e1) (Expr.getList e2)))
 val dolistImpl = binary  (fn (E, e1, e2)     => (List.app (ignore o getUnary E e1) (Expr.getList e2); Expr.eps))
-val foldlImpl  = ternary (fn (E, e1, e2, e3) => List.foldl (getBinary E e1) e2 (Expr.getList e3))
-val foldrImpl  = ternary (fn (E, e1, e2, e3) => List.foldr (getBinary E e1) e2 (Expr.getList e3))
+
+local
+  fun foldr0 f = fn
+      []    => raise Empty
+  | x :: [] => x
+  | x :: xs => f (x, foldr0 f xs)
+
+  fun foldl0 f = fn
+      []    => raise Empty
+  | x :: xs => List.foldl f x xs
+in
+  fun foldlImpl E = fn
+    [e1, e2]     => foldl0 (getBinary E e1) (Expr.getList e2)
+  | [e1, e2, e3] => List.foldl (getBinary E e1) e2 (Expr.getList e3)
+  | es           => raise (InvalidArity (3, List.length es))
+
+  fun foldrImpl E = fn
+    [e1, e2]     => foldr0 (getBinary E e1) (Expr.getList e2)
+  | [e1, e2, e3] => List.foldr (getBinary E e1) e2 (Expr.getList e3)
+  | es           => raise (InvalidArity (3, List.length es))
+end
 
 val refImpl    = unary  (fn (_, e)      => Ref (ref e))
 val derefImpl  = unary  (fn (_, e)      => !(Expr.getRef e))
@@ -216,9 +271,11 @@ val builtin =
  (* Dict/Set *)
  ("set",            eager setImpl),
  ("dict",           eager dictImpl),
- (* Arithmetics *)
+ (* Arithmetic *)
  ("+",              addImpl),
+ ("-",              subImpl),
  ("*",              mulImpl),
+ ("/",              divImpl),
  ("true",           Bool true),
  ("false",          Bool false),
  (* Control flow *)
