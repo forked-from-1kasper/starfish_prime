@@ -44,9 +44,10 @@
 (defun ¬¬¬  (P) (¬ (¬¬ P)))
 (defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
 
-(define ⊤ (app "Impl" (list ⊥ ⊥)))
+(defun impl (P Q) (app "Impl" (list P Q)))
 
-(defun ⊃ σ (if (= σ nil) ⊤ (foldr (λ (P Q) (app "Impl" (list P Q))) σ)))
+(define ⊤ (impl ⊥ ⊥))
+(defun ⊃ σ (if (= σ nil) ⊤ (foldr impl σ)))
 
 (defun Proj (τ n) (nth n (cdr τ)))
 (defun Arity (τ) (length (cdr τ)))
