@@ -48,10 +48,8 @@
 
 (defun ⊃ σ (if (= σ nil) ⊤ (foldr (λ (P Q) (app "Impl" (list P Q))) σ)))
 
-(defun proj (τ n) (nth n (cdr τ)))
-(defun arity (τ) (length (cdr τ)))
-
-;; TODO: definitions & indices
+(defun Proj (τ n) (nth n (cdr τ)))
+(defun Arity (τ) (length (cdr τ)))
 
 (deftheory ZOL ;; zeroth-order logic
   (defmacro well-formed? σ
@@ -88,7 +86,7 @@
 (defthm truth ⊤ (invariance₁ (DICT "α" ⊥) I))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
-(defun dup (T) (→-intro (proj (formula T) 0) T))
+(defun dup (T) (→-intro (Proj (formula T) 0) T))
 
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun pop (T)
