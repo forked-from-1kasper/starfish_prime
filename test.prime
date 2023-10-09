@@ -160,6 +160,9 @@
 (let (φ (veq (var "A") (var "B")))
   (print φ " & " (formula φ) "\n"))
 
+(let (ψ (cr (var "A") (var "B") (var "C")))
+  (print ψ " & " (dup ψ)))
+
 (print (invariance₁ (DICT "α" (var "A")) I) "\n")
 (print ¬¬-elim "\n")
 
