@@ -1,13 +1,13 @@
 fun exchange x y = fn z => if z = x then y else if z = y then x else z
 
 datatype formula =
-  Var    of string
+  Fv     of string
+| Bv     of int
 | App    of string * formula list
-| Binder of string * string * formula
+| Binder of string * formula
 
-exception Failure      of string
-exception InvalidSubst of string * formula * formula
-exception Unify        of formula * formula
+exception Failure of string
+exception Unify   of formula * formula
 
 structure Formula =
 struct
@@ -16,97 +16,100 @@ struct
   val kind = fn
     App _    => "app"
   | Binder _ => "binder"
-  | Var _    => "var"
+  | Fv _     => "fv"
+  | Bv _     => "bv"
+
+  val rec show = fn
+    Fv x          => x
+  | Bv x          => Int.toString x
+  | App (x, xs)   => x ^ "(" ^ String.concatWith ", " (List.map show xs) ^ ")"
+  | Binder (x, t) => x ^ " " ^ show t
+
+  fun equal e1 e2 = case (e1, e2) of
+    (Fv x,           Fv y)           => x = y
+  | (Bv i,           Bv j)           => i = j
+  | (App (x, xs),    App (y, ys))    => x = y andalso ListPair.allEq (fn (e1, e2) => equal e1 e2) (xs, ys)
+  | (Binder (i, t1), Binder (j, t2)) => i = j andalso equal t1 t2
+  | (_,              _)              => false
+
+  (* As bounded and free variables are clearly distinguished in the syntax
+     (just like in Bourbaki’s “assemblages”), there is no need to worry
+     about potential name collision. *)
+  fun subst vs = fn
+    App (f, ts)   => App (f, List.map (subst vs) ts)
+  | Binder (b, t) => Binder (b, subst vs t)
+  | Bv y          => Bv y
+  | Fv x          => Option.getOpt (Dict.get x vs, Fv x)
+
+  (* Turns (captures) free variable into bound. *)
+  fun capture x =
+  let
+    fun loop k = fn
+      Fv y          => if x = y then Bv k else Fv y
+    | Bv n          => Bv n
+    | Binder (b, t) => Binder (b, loop (k + 1) t)
+    | App (t, ts)   => App (t, List.map (loop k) ts)
+  in
+    loop 1
+  end
+
+  (* Turns (frees) bound variable into free. *)
+  fun free e =
+  let
+    fun loop k = fn
+      Fv x          => Fv x
+    | Bv k'         => if k = k' then e else Bv k'
+    | Binder (b, t) => Binder (b, loop (k + 1) t)
+    | App (t, ts)   => App (t, List.map (loop k) ts)
+  in
+    loop 1
+  end
+
+  fun bind b x t = Binder (b, capture x t)
+
+  fun unbind e = fn
+    Binder (_, t) => free e t
+  | _             => raise (Failure "unbind")
+
+  (* Helpful functions *)
 
   val funsym = fn
-    App (x, _)       => x
-  | Binder (x, _, _) => x
-  | _                => raise (Failure "funsym")
-
-  val boundof = fn Binder (_, y, _) => y | _ => raise (Failure "boundof")
+    App (x, _)    => x
+  | Binder (x, _) => x
+  | _             => raise (Failure "funsym")
 
   val arity = fn
     App (_, xs) => List.length xs
   | _           => raise (Failure "arity")
 
-  val rec show = fn
-    Var x            => x
-  | App (x, xs)      => x ^ "(" ^ String.concatWith ", " (List.map show xs) ^ ")"
-  | Binder (x, y, t) => x ^ " " ^ y ^ ", " ^ show t
-
-  fun equal e1 e2 = case (e1, e2) of
-    (Var x,             Var y)             => x = y
-  | (App (x, xs),       App (y, ys))       => x = y andalso ListPair.allEq (fn (e1, e2) => equal e1 e2) (xs, ys)
-  | (Binder (i, x, t1), Binder (j, y, t2)) => i = j andalso x = y andalso equal t1 t2
-  | (_,                 _)                 => false
-
-  fun bound x = fn
-    Var _            => false
-  | Binder (_, y, t) => x = y orelse bound x t
-  | App (_, ts)      => List.exists (bound x) ts
-
-  fun free x = fn
-    Var y            => x = y
-  | Binder (_, y, t) => x <> y andalso free x t
-  | App (_, ts)      => List.exists (free x) ts
-
   fun occur x = fn
-    Var y            => x = y
-  | Binder (_, y, t) => x = y orelse occur x t
-  | App (_, ts)      => List.exists (occur x) ts
+    Fv y          => x = y
+  | Bv _          => false
+  | Binder (_, t) => occur x t
+  | App (_, ts)   => List.exists (occur x) ts
 
-  val bv =
+  val fv =
   let
-    fun loop bag = fn
-      Var _            => bag
-    | Binder (_, x, t) => loop (Bag.add x bag) t
-    | App (_, ts)      => List.foldl (fn (e, b) => loop b e) bag ts
+    fun loop fvs = fn
+      Fv x          => Bag.add x fvs
+    | Bv _          => fvs
+    | Binder (_, t) => loop fvs t
+    | App (_, ts)   => List.foldl (fn (e, b) => loop b e) fvs ts
   in
     loop (Bag.empty ())
   end
 
-  val fv =
-  let
-    fun loop bvs fvs = fn
-      Var x            => if Bag.mem x bvs then fvs else Bag.add x fvs
-    | Binder (_, x, t) => loop (Bag.add x bvs) fvs t
-    | App (_, ts)      => List.foldl (fn (e, b) => loop bvs b e) fvs ts
-  in
-    loop (Bag.empty ()) (Bag.empty ())
-  end
-
-  fun subst vs e =
-  let
-    fun loop ss bvs = fn
-      App (f, ts)      => App (f, List.map (loop ss bvs) ts)
-    | Binder (b, x, t) => Binder (b, x, loop (Dict.remove x ss) (Bag.add x bvs) t)
-    | Var x            =>
-      case Dict.get x ss of
-        SOME (t, fvs) => if Bag.disjoint fvs bvs then t
-                         else raise (InvalidSubst (x, t, e))
-      | NONE          => Var x
-  in
-    loop (Dict.map (fn t => (t, fv t)) vs) (Bag.empty ()) e
-  end
-
-  fun interchange x y = fn
-    Var z            => Var (exchange x y z)
-  | App (f, ts)      => App (f, List.map (interchange x y) ts)
-  | Binder (b, z, t) => Binder (b, exchange x y z, interchange x y t)
-
   fun unify ss t1 t2 =
   case (t1, t2) of
-    (Var x, t) =>
+    (Fv x, t) =>
     (case Dict.get x ss of
       SOME e => if equal t e then ss else raise (Unify (t1, t2))
     | NONE   => Dict.add x t ss)
+  | (Bv i, Bv j) => if i = j then ss else raise (Unify (t1, t2))
   | (App (f1, ts1), App (f2, ts2)) =>
     if f1 = f2 then ListPair.foldlEq (fn (t1, t2, ss) => unify ss t1 t2) ss (ts1, ts2)
     else raise (Unify (t1, t2))
-  | (Binder (b1, x, e1), Binder (b2, y, e2)) =>
-    if b1 = b2 then (case Dict.get x ss of
-        SOME _ => raise (Failure "unify")
-      | NONE   => unify (Dict.add x (Var y) ss) e1 e2)
-    else raise (Unify (t1, t2))
+  (* TODO: give some satisfactory semantics of unification against binder *)
+  | (Binder (_, _), _) => raise (Failure "unify")
   | (_, _) => raise (Unify (t1, t2))
 end

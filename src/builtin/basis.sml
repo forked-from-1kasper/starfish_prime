@@ -106,11 +106,10 @@ val car = unary
     | (_, e)         => raise (TypeMismatch (e, ["list", "formula"])))
 
 val cdr = unary
-  (fn (_, List xs)                    => List (List.tl xs)
-    | (_, Formula (App (_, ts)))      => List (List.map Formula ts)
-    | (_, Formula (Binder (_, _, t))) => Formula t
-    | (_, Formula (Var _))            => raise (Failure "cdr")
-    | (_, e)                          => raise (TypeMismatch (e, ["list", "formula"])))
+  (fn (_, List xs)               => List (List.tl xs)
+    | (_, Formula (App (_, ts))) => List (List.map Formula ts)
+    | (_, Formula _)             => raise (Failure "cdr")
+    | (_, e)                     => raise (TypeMismatch (e, ["list", "formula"])))
 
 val lengthImpl = unary
   (fn (_, List xs)  => Int (List.length xs)
@@ -177,26 +176,25 @@ fun deftheory E = fn
 let
   val E' = Environment.upLocal E "postulate" (postulate (Expr.getSymbol e))
 in
-  List.app (ignore o (Expr.eval E')) es; e
+  List.app (ignore o Expr.eval E') es; e
 end
 
-val var    = unary   (fn (_, e)          => Formula (Var (Expr.getString e)))
+val var    = unary   (fn (_, e)          => Formula (Fv (Expr.getString e)))
 val app    = binary  (fn (_, e1, e2)     => Formula (App (Expr.getString e1, List.map Expr.getFormula (Expr.getList e2))))
-val binder = ternary (fn (_, e1, e2, e3) => Formula (Binder (Expr.getString e1, Expr.getString e2, Expr.getFormula e3)))
+val binder = ternary (fn (_, e1, e2, e3) => Formula (Formula.bind (Expr.getString e1) (Expr.getString e2) (Expr.getFormula e3)))
 
-fun set bag = List (List.map String (Bag.fold (fn x => fn xs => x :: xs) bag []))
+val substImpl = binary (fn (_, e1, e2) => Formula (Formula.subst (Dict.map Expr.getFormula (Expr.getDict e1)) (Expr.getFormula e2)))
+val freeImpl  = binary (fn (_, e1, e2) => Formula (Formula.unbind (Expr.getFormula e1) (Expr.getFormula e2)))
 
-val fvImpl = unary (fn (_, e) => Set (Formula.fv (Expr.getFormula e)))
-val bvImpl = unary (fn (_, e) => Set (Formula.bv (Expr.getFormula e)))
-
-val freeImpl    = binary (fn (_, e1, e2) => Bool (Formula.free  (Expr.getString e1) (Expr.getFormula e2)))
-val boundImpl   = binary (fn (_, e1, e2) => Bool (Formula.bound (Expr.getString e1) (Expr.getFormula e2)))
-val occurImpl   = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
-val kindofImpl  = unary (fn (_, e) => Symbol (Formula.kind (Expr.getFormula e)))
-val boundofImpl = unary (fn (_, e) => String (Formula.boundof (Expr.getFormula e)))
+val fvImpl     = unary  (fn (_, e)      => Set (Formula.fv (Expr.getFormula e)))
+val occurImpl  = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
+val kindofImpl = unary  (fn (_, e)      => Symbol (Formula.kind (Expr.getFormula e)))
+val unifyImpl  = binary (fn (_, e1, e2) => Dict (Dict.map Formula (Formula.unify (Dict.empty ()) (Expr.getFormula e1) (Expr.getFormula e2))))
 
 val formulaImpl = unary (fn (_, e) => Formula (Expr.getTheorem e))
 val theoryImpl  = unary (fn (_, e) => String (Expr.getTheory e))
+
+fun set bag = List (List.map String (Bag.fold (fn x => fn xs => x :: xs) bag []))
 
 fun dict k v =
 let
@@ -210,19 +208,6 @@ end
 
 val setImpl  = unary (fn (_, e) => Set (List.foldl (fn (x, t) => Bag.add (Expr.getString x) t) (Bag.empty ()) (Expr.getList e)))
 val dictImpl = unary (fn (_, e) => Dict (dict Expr.getString idfun (Expr.getList e)))
-
-val interchangeImpl = ternary
-  (fn (_, e1, e2, e3) =>
-  let
-    val x = Expr.getString  e1
-    val y = Expr.getString  e2
-    val t = Expr.getFormula e3
-  in
-    Formula (Formula.interchange x y t)
-  end)
-
-val substImpl = binary (fn (_, e1, e2) => Formula (Formula.subst (Dict.map Expr.getFormula (Expr.getDict e1)) (Expr.getFormula e2)))
-val unifyImpl = binary (fn (_, e1, e2) => Dict (Dict.map Formula (Formula.unify (Dict.empty ()) (Expr.getFormula e1) (Expr.getFormula e2))))
 
 fun caseImpl E =
 let
@@ -293,14 +278,10 @@ val builtin =
  ("var",            eager var),
  ("app",            eager app),
  ("binder",         eager binder),
- ("kindof",         eager kindofImpl),
- ("boundof",        eager boundofImpl),
  ("subst",          eager substImpl),
- ("interchange",    eager interchangeImpl),
+ ("free",           eager freeImpl),
  ("fv",             eager fvImpl),
- ("bv",             eager bvImpl),
- ("fv?",            eager freeImpl),
- ("bv?",            eager boundImpl),
+ ("kindof",         eager kindofImpl),
  ("occur?",         eager occurImpl),
  ("formula",        eager formulaImpl),
  ("theory",         eager theoryImpl),

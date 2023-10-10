@@ -57,8 +57,8 @@
     (list 'if (cons 'and (mapcar (λ (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
       (list 'fail "expected formula of zeroth-order logic")))
 
-  (defun invariance₁ (θ T)   (well-formed? T) (postulate (subst θ (formula T))))
-  (defun invariance₂ (x y T) (well-formed? T) (postulate (interchange x y (formula T))))
+  (defun invariance (θ T) (well-formed? T)
+    (postulate (subst θ (formula T))))
 
   (defun mp (T₁ T₂) (well-formed? T₁ T₂)
     (case (formula T₁) (var "P")
@@ -84,7 +84,7 @@
       (mp (veq (var "α") (⊃ (var "α") (var "α")))
           (cr (var "α") (⊃ (var "α") (var "α")) (var "α")))))
 
-(defthm truth ⊤ (invariance₁ (DICT "α" ⊥) I))
+(defthm truth ⊤ (invariance (DICT "α" ⊥) I))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
 (defun dup (T) (→-intro (Proj (formula T) 0) T))
@@ -92,11 +92,11 @@
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun pop (T)
   (case (formula T) (⊃ (var "P") (⊃ (var "P") (var "Q")))
-    (mp (invariance₁ (DICT "α" P) I) (mp T (cr P P Q)))))
+    (mp (invariance (DICT "α" P) I) (mp T (cr P P Q)))))
 
 (defthm cut (⊃ (var "P") (⊃ (⊃ (var "P") (var "Q")) (var "Q")))
   (let (T₁ (→-intro (var "P")
-             (mp (invariance₁ (DICT "α" (⊃ (var "P") (var "Q"))) I)
+             (mp (invariance (DICT "α" (⊃ (var "P") (var "Q"))) I)
                  (cr (⊃ (var "P") (var "Q")) (var "P") (var "Q"))))
         T₂ (cr (var "P")
                (⊃ (⊃ (var "P") (var "Q")) (var "P"))
@@ -105,11 +105,11 @@
     (mp T₃ (mp T₁ T₂))))
 
 (defthm ¬¬-intro (⊃ (var "α") (¬¬ (var "α")))
-  (invariance₁ (DICT "P" (var "α") "Q" ⊥) cut))
+  (invariance (DICT "P" (var "α") "Q" ⊥) cut))
 
 (defthm →-comm (⊃ (⊃ (var "P") (var "Q") (var "R"))
                   (⊃ (var "Q") (var "P") (var "R")))
-  (let (T₁ (mp (invariance₁ (DICT "P" (var "Q") "Q" (var "R")) cut)
+  (let (T₁ (mp (invariance (DICT "P" (var "Q") "Q" (var "R")) cut)
                (mp (→-intro (var "Q") (veq (⊃ (⊃ (var "Q") (var "R")) (var "R")) (var "P")))
                    (cr (var "Q")
                        (⊃ (⊃ (var "Q") (var "R")) (var "R"))
@@ -149,22 +149,23 @@
 ;;;;
 
 (defthm test-thm (⊃ (var "B") (var "B"))
-  (invariance₂ "α" "B" I))
+  (invariance (DICT "α" (var "B")) I))
 
 (define ∃ (λ (x P) (binder "∃" x P)))
 
 (define τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
-;(print (subst (DICT "x" (var "y")) τ₀) "\n") ; will emit an error
+(print (subst (DICT "x" (var "y")) τ₀) "\n") ; “y” is already captured, so it’s safe to have it in substitution
 (print (subst (DICT "x" (var "z")) τ₀) "\n")
+(print (free (app "T" nil) τ₀) "\n")
 
 (let (φ (veq (var "A") (var "B")))
   (print φ " & " (formula φ) "\n"))
 
 (let (ψ (cr (var "A") (var "B") (var "C")))
-  (print ψ " & " (dup ψ)))
+  (print ψ " & " (dup ψ) "\n"))
 
-(print (invariance₁ (DICT "α" (var "A")) I) "\n")
-(print ¬¬-elim "\n")
+(print (invariance (DICT "α" (var "A")) I) "\n")
+(print (¬¬-elim (var "P")) "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))
 

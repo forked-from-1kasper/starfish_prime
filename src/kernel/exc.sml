@@ -10,7 +10,6 @@ struct
   | AlreadyDeclared x        => quote x ^ " is already declared."
   | TypeMismatch (e, ts)     => quote (Expr.show e) ^ " expected to be " ^ String.concatWith " or " (List.map quote ts) ^ ", but it is " ^ quote (Expr.typeof e) ^ "."
   | InvalidArity (z1, z2)    => "Expected " ^ Int.toString z1 ^ " parameters but " ^ Int.toString z2 ^ " were given."
-  | InvalidSubst (x, t, e)   => "Cannot substitute " ^ quote x ^ " with " ^ quote (Formula.show t) ^ " in\n  " ^ Formula.show e
   | TooManyParams xs         => "Too many (" ^ Int.toString (List.length xs) ^ ") parameters were given."
   | TooFewParams xs          => "Too few (" ^ Int.toString (List.length xs) ^ ") parameters were given."
   | Unify (t1, t2)           => "Unable to unify " ^ quote (Formula.show t1) ^ " with " ^ quote (Formula.show t2) ^ "."
