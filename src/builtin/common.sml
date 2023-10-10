@@ -1,3 +1,13 @@
+fun idfun x = x
+fun const a b = a
+
+fun flip (a, b) = (b, a)
+
+val printExpr = fn
+  Symbol x => "(symbol \"" ^ x ^ "\")"
+| String s => s
+| e        => Expr.show e
+
 fun upload E = List.app (fn (k, v) => Environment.upGlobal E k v)
 
 fun getUnary E e0 =

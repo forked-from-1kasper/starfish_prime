@@ -20,16 +20,22 @@ fun compile target deps =
 fun link xs = "$(MOSML)/bin/mosmlc -o $(BINARY) " ^ concat xs
 
 val project =
-[("algorithms/sig",  []),
- ("algorithms/bst",  ["algorithms/sig"]),
- ("algorithms/trie", ["algorithms/sig", "algorithms/bst"]),
- ("kernel/formula",  ["algorithms/trie"]),
- ("kernel/expr",     ["algorithms/trie", "kernel/formula"]),
- ("kernel/reader",   ["kernel/expr"]),
- ("kernel/exc",      ["kernel/formula", "kernel/expr", "kernel/reader"]),
- ("builtin/common",  ["kernel/expr"]),
- ("builtin/basis",   ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common"]),
- ("main",            ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/basis"])]
+[("algorithms/sig",     []),
+ ("algorithms/bst",     ["algorithms/sig"]),
+ ("algorithms/trie",    ["algorithms/sig", "algorithms/bst"]),
+ ("kernel/formula",     ["algorithms/trie"]),
+ ("kernel/expr",        ["algorithms/trie", "kernel/formula"]),
+ ("kernel/reader",      ["kernel/expr"]),
+ ("kernel/exc",         ["kernel/formula", "kernel/expr", "kernel/reader"]),
+ ("builtin/common",     ["kernel/expr"]),
+ ("builtin/arithmetic", ["kernel/expr", "builtin/common"]),
+ ("builtin/meta",       ["kernel/expr", "builtin/common"]),
+ ("builtin/list",       ["kernel/formula", "kernel/expr", "builtin/common"]),
+ ("builtin/control",    ["kernel/formula", "kernel/expr", "builtin/common"]),
+ ("builtin/math",       ["algorithms/trie", "kernel/exc", "kernel/formula", "kernel/expr", "builtin/common"]),
+ ("builtin/basis",      ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/arithmetic",
+                         "builtin/meta", "builtin/list", "builtin/control", "builtin/math"]),
+ ("main",               ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/basis"])]
 
 local
   val code = List.map (uo o fst) project
