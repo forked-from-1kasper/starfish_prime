@@ -157,6 +157,7 @@
 (print (subst (DICT "x" (var "y")) τ₀) "\n") ; “y” is already captured, so it’s safe to have it in substitution
 (print (subst (DICT "x" (var "z")) τ₀) "\n")
 (print (free (app "T" nil) τ₀) "\n")
+(print τ₀ " & " (rebind "∀" τ₀) "\n")
 
 (let (φ (veq (var "A") (var "B")))
   (print φ " & " (formula φ) "\n"))

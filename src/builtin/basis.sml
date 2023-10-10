@@ -186,6 +186,7 @@ val binder = ternary (fn (_, e1, e2, e3) => Formula (Formula.bind (Expr.getStrin
 val substImpl = binary (fn (_, e1, e2) => Formula (Formula.subst (Dict.map Expr.getFormula (Expr.getDict e1)) (Expr.getFormula e2)))
 val freeImpl  = binary (fn (_, e1, e2) => Formula (Formula.unbind (Expr.getFormula e1) (Expr.getFormula e2)))
 
+val rebindImpl = binary (fn (_, e1, e2) => Formula (Formula.rebind (Expr.getString e1) (Expr.getFormula e2)))
 val fvImpl     = unary  (fn (_, e)      => Set (Formula.fv (Expr.getFormula e)))
 val occurImpl  = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
 val kindofImpl = unary  (fn (_, e)      => Symbol (Formula.kind (Expr.getFormula e)))
@@ -280,6 +281,7 @@ val builtin =
  ("binder",         eager binder),
  ("subst",          eager substImpl),
  ("free",           eager freeImpl),
+ ("rebind",         eager rebindImpl),
  ("fv",             eager fvImpl),
  ("kindof",         eager kindofImpl),
  ("occur?",         eager occurImpl),

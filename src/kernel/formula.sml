@@ -82,6 +82,11 @@ struct
     App (_, xs) => List.length xs
   | _           => raise (Failure "arity")
 
+  (* Equivalent to (bind b (Var ω) ∘ unbind (Var ω))(τ), where ω ∉ Fv(τ) *)
+  fun rebind b = fn
+    Binder (_, t) => Binder (b, t)
+  | _             => raise (Failure "rebind")
+
   fun occur x = fn
     Fv y          => x = y
   | Bv _          => false
