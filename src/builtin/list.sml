@@ -16,10 +16,10 @@ val lengthImpl = unary
     | (_, String x) => Int (String.size x)
     | (_, e)        => raise (TypeMismatch (e, ["list", "string"])))
 
-val consImpl   = binary  (fn (_, e1, e2)     => List (e1 :: Expr.getList e2))
-val nth        = binary  (fn (_, e1, e2)     => List.nth (Expr.getList e2, Expr.getInt e1))
-val mapcarImpl = binary  (fn (E, e1, e2)     => List (List.map (getUnary E e1) (Expr.getList e2)))
-val dolistImpl = binary  (fn (E, e1, e2)     => (List.app (ignore o getUnary E e1) (Expr.getList e2); Expr.eps))
+val consImpl   = binary  (fn (_, e1, e2) => List (e1 :: Expr.getList e2))
+val nth        = binary  (fn (_, e1, e2) => List.nth (Expr.getList e2, Expr.getInt e1))
+val mapcarImpl = binary  (fn (E, e1, e2) => List (List.map (getUnary E e1) (Expr.getList e2)))
+val dolistImpl = binary  (fn (E, e1, e2) => (List.app (ignore o getUnary E e1) (Expr.getList e2); Expr.eps))
 
 local
   fun foldr0 f = fn
