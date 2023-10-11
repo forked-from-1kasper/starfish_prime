@@ -53,9 +53,9 @@
 (defun Arity (τ) (length (cdr τ)))
 
 (deftheory ZOL ;; zeroth-order logic
-  (defmacro well-formed? σ
-    (list 'if (cons 'and (mapcar (λ (ε) (list '= (list 'theory ε) "ZOL")) σ)) nil
-      (list 'fail "expected formula of zeroth-order logic")))
+  (defun well-formed? σ
+    (if (forall (λ (ε) (= (theory ε) "ZOL")) σ) nil
+        (fail "expected theorem of zeroth-order logic")))
 
   (defun invariance (θ T) (well-formed? T)
     (postulate (subst θ (formula T))))

@@ -42,6 +42,9 @@ in
   | es           => raise (InvalidArity (3, List.length es))
 end
 
+val forallImpl = binary (fn (E, e1, e2) => Bool (List.all    (Expr.getBool o getUnary E e1) (Expr.getList e2)))
+val existsImpl = binary (fn (E, e1, e2) => Bool (List.exists (Expr.getBool o getUnary E e1) (Expr.getList e2)))
+
 val LinkedList =
 [("list",   eager (const List)),
  ("cons",   eager consImpl),
@@ -52,4 +55,6 @@ val LinkedList =
  ("mapcar", eager mapcarImpl),
  ("dolist", eager dolistImpl),
  ("foldl",  eager foldlImpl),
- ("foldr",  eager foldrImpl)]
+ ("foldr",  eager foldrImpl),
+ ("forall", eager forallImpl),
+ ("exists", eager existsImpl)]
