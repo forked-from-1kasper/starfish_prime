@@ -34,12 +34,12 @@ in
   fun foldlImpl E = fn
     [e1, e2]     => foldl0 (getBinary E e1) (Expr.getList e2)
   | [e1, e2, e3] => List.foldl (getBinary E e1) e2 (Expr.getList e3)
-  | es           => raise (InvalidArity (3, List.length es))
+  | es           => raise (InvalidArity ([2, 3], List.length es))
 
   fun foldrImpl E = fn
     [e1, e2]     => foldr0 (getBinary E e1) (Expr.getList e2)
   | [e1, e2, e3] => List.foldr (getBinary E e1) e2 (Expr.getList e3)
-  | es           => raise (InvalidArity (3, List.length es))
+  | es           => raise (InvalidArity ([2, 3], List.length es))
 end
 
 val forallImpl = binary (fn (E, e1, e2) => Bool (List.all    (Expr.getBool o getUnary E e1) (Expr.getList e2)))

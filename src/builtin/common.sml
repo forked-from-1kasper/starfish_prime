@@ -26,23 +26,23 @@ end
 
 fun nulary f E = fn
   [] => f E
-| xs => raise (InvalidArity (0, List.length xs))
+| xs => raise (InvalidArity ([0], List.length xs))
 
 fun unary f E = fn
   [x] => f (E, x)
-| xs  => raise (InvalidArity (1, List.length xs))
+| xs  => raise (InvalidArity ([1], List.length xs))
 
 fun binary f E = fn
   [x, y] => f (E, x, y)
-| xs     => raise (InvalidArity (2, List.length xs))
+| xs     => raise (InvalidArity ([2], List.length xs))
 
 fun ternary f E = fn
   [x, y, z] => f (E, x, y, z)
-| xs        => raise (InvalidArity (3, List.length xs))
+| xs        => raise (InvalidArity ([3], List.length xs))
 
 fun quaternary f E = fn
   [x, y, z, w] => f (E, x, y, z, w)
-| xs           => raise (InvalidArity (4, List.length xs))
+| xs           => raise (InvalidArity ([4], List.length xs))
 
 fun eager   f = Lambda (fn (E, e) => f E (List.map (Expr.eval E) e))
 fun special f = Lambda (fn (E, e) => f E e)
@@ -51,7 +51,7 @@ fun variadic x ys E = Environment.upLocal E x (List ys)
 
 fun uniadic xs ys E =
   ListPair.foldlEq (fn (k, v, E') => Environment.upLocal E' k v) E (List.map Expr.getSymbol xs, ys)
-  handle ListPair.UnequalLengths => raise (InvalidArity (List.length xs, List.length ys))
+  handle ListPair.UnequalLengths => raise (InvalidArity ([List.length xs], List.length ys))
 
 fun lambdaImpl unpack E1 body =
   Lambda (fn (E2, e) => Expr.progn (unpack (List.map (Expr.eval E2) e) E1) body)

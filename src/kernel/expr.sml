@@ -19,7 +19,7 @@ withtype closure = expr environment * expr list -> expr
 exception NameError       of string
 exception AlreadyDeclared of string
 exception TypeMismatch    of expr * string list
-exception InvalidArity    of int * int
+exception InvalidArity    of int list * int
 
 structure Environment =
 struct
