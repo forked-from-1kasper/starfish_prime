@@ -30,11 +30,11 @@ val project =
  ("builtin/common",     ["kernel/expr"]),
  ("builtin/arithmetic", ["kernel/expr", "builtin/common"]),
  ("builtin/meta",       ["kernel/expr", "builtin/common"]),
- ("builtin/list",       ["kernel/formula", "kernel/expr", "builtin/common"]),
+ ("builtin/data",       ["algorithms/trie", "kernel/formula", "kernel/expr", "builtin/common"]),
  ("builtin/control",    ["kernel/formula", "kernel/expr", "builtin/common"]),
  ("builtin/math",       ["algorithms/trie", "kernel/exc", "kernel/formula", "kernel/expr", "builtin/common"]),
  ("builtin/basis",      ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/arithmetic",
-                         "builtin/meta", "builtin/list", "builtin/control", "builtin/math"]),
+                         "builtin/meta", "builtin/data", "builtin/control", "builtin/math"]),
  ("main",               ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/basis"])]
 
 local

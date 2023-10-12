@@ -9,7 +9,7 @@ src/kernel/exc.sml
 src/builtin/common.sml
 src/builtin/arithmetic.sml
 src/builtin/meta.sml
-src/builtin/list.sml
+src/builtin/data.sml
 src/builtin/control.sml
 src/builtin/math.sml
 src/builtin/basis.sml
