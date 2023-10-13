@@ -53,7 +53,7 @@ local
   | (Bool b1, Bool b2) => Bool (abj b1 b2)
   | (t1,      t2)      => raise (TypeMismatch (t1, [Expr.typeof t2]))
 in
-  val addImpl = eager (const (List.foldl plus Expr.eps))
+  val addImpl = eager (const (List.foldl (plus o flip) Expr.eps))
   val subImpl = eager (const (fn   []    => Expr.eps
                                | e :: [] => negate e
                                | e :: es => List.foldl (minus o flip) e es))

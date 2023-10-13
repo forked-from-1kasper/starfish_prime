@@ -1,5 +1,5 @@
-val printImpl   = fn E => fn e => (List.app (print o printExpr) e; Expr.eps)
-val newlineImpl = nulary (fn E => (print "\n"; Expr.eps))
+val printImpl   = fn E => fn e => List.app (print o printExpr) e
+val newlineImpl = nulary (fn E => print "\n")
 
 fun readImpl E stxs =
 let
@@ -12,8 +12,8 @@ in
 end
 
 val IO = (* Input/output *)
-[("print",   eager printImpl),
- ("newline", eager newlineImpl),
- ("read",    eager readImpl)]
+[("print",   effect printImpl),
+ ("newline", effect newlineImpl),
+ ("read",    eager  readImpl)]
 
 val builtin = Arithmetic @ Meta @ Control @ IO @ Data @ Math

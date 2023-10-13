@@ -45,6 +45,7 @@ fun quaternary f E = fn
 | xs           => raise (InvalidArity ([4], List.length xs))
 
 fun eager   f = Lambda (fn (E, e) => f E (List.map (Expr.eval E) e))
+fun effect  f = Lambda (fn (E, e) => (f E (List.map (Expr.eval E) e); Expr.eps))
 fun special f = Lambda (fn (E, e) => f E e)
 
 fun variadic x ys E = Environment.upLocal E x (List ys)

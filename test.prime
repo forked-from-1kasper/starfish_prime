@@ -49,7 +49,7 @@
 (define ⊤ (impl ⊥ ⊥))
 (defun ⊃ σ (if (= σ nil) ⊤ (foldr impl σ)))
 
-(defun Proj (τ n) (nth n (cdr τ)))
+(defun Proj (τ n) (get n (cdr τ)))
 (defun Arity (τ) (length (cdr τ)))
 
 (deftheory ZOL ;; zeroth-order logic

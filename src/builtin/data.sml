@@ -16,11 +16,7 @@ val lengthImpl = unary
     | (_, String x) => Int (String.size x)
     | (_, e)        => raise (TypeMismatch (e, ["list", "string"])))
 
-val consImpl   = binary  (fn (_, e1, e2) => List (e1 :: Expr.getList e2))
-val nth        = binary  (fn (_, e1, e2) => List.nth (Expr.getList e2, Expr.getInt e1))
-val mapcarImpl = binary  (fn (E, e1, e2) => List (List.map (getUnary E e1) (Expr.getList e2)))
-val dolistImpl = binary  (fn (E, e1, e2) => (List.app (ignore o getUnary E e1) (Expr.getList e2); Expr.eps))
-
+val consImpl = binary (fn (_, e1, e2) => List (e1 :: Expr.getList e2))
 fun set bag = List (List.map String (Bag.fold (fn x => fn xs => x :: xs) bag []))
 
 fun dict k v =
@@ -49,7 +45,18 @@ val memImpl = binary (fn (_, k, Dict t) => Bool (Dict.mem (Expr.getString k) t)
                        | (_, k, Set t)  => Bool (Bag.mem (Expr.getString k) t)
                        | (_, _, e)      => raise (TypeMismatch (e, ["dict", "set"])))
 
-val getImpl = binary (fn (_, e1, e2) => Option.getOpt (Dict.get (Expr.getString e1) (Expr.getDict e2), Expr.eps))
+val getImpl = binary (fn (_, e, Dict t) => Option.getOpt (Dict.get (Expr.getString e) t, Expr.eps)
+                       | (_, e, List t) => List.nth (t, Expr.getInt e)
+                       | (_, _, e)      => raise (TypeMismatch (e, ["dict", "list"])))
+
+val mapcarImpl = binary (fn (E, e, List t) => List (List.map (getUnary E e) t)
+                          | (E, e, Dict t) => Dict (Dict.mapi (fn k => fn v => getBinary E e (String k, v)) t)
+                          | (_, _, e)      => raise (TypeMismatch (e, ["list", "dict"])))
+
+val eachImpl = binary (fn (E, e, List t) => List.app (ignore o getUnary E e) t
+                        | (E, e, Dict t) => Dict.iter (fn k => fn v => ignore (getBinary E e (String k, v))) t
+                        | (E, e, Set t)  => Bag.iter (ignore o getUnary E e o String) t
+                        | (_, _, e)      => raise (TypeMismatch (e, ["list", "dict", "set"])))
 
 local
   fun foldr0 f = fn
@@ -76,21 +83,20 @@ val forallImpl = binary (fn (E, e1, e2) => Bool (List.all    (Expr.getBool o get
 val existsImpl = binary (fn (E, e1, e2) => Bool (List.exists (Expr.getBool o getUnary E e1) (Expr.getList e2)))
 
 val Data =
-[("list",   eager (const List)),
- ("set",    eager setImpl),
- ("dict",   eager dictImpl),
- ("cons",   eager consImpl),
- ("car",    eager car),
- ("cdr",    eager cdr),
- ("length", eager lengthImpl),
- ("nth",    eager nth),
- ("mapcar", eager mapcarImpl),
- ("dolist", eager dolistImpl),
- ("foldl",  eager foldlImpl),
- ("foldr",  eager foldrImpl),
- ("forall", eager forallImpl),
- ("exists", eager existsImpl),
- ("add",    eager addImpl),
- ("get",    eager getImpl),
- ("mem",    eager memImpl),
- ("remove", eager removeImpl)]
+[("list",   eager  (const List)),
+ ("set",    eager  setImpl),
+ ("dict",   eager  dictImpl),
+ ("cons",   eager  consImpl),
+ ("car",    eager  car),
+ ("cdr",    eager  cdr),
+ ("length", eager  lengthImpl),
+ ("mapcar", eager  mapcarImpl),
+ ("each",   effect eachImpl),
+ ("foldl",  eager  foldlImpl),
+ ("foldr",  eager  foldrImpl),
+ ("forall", eager  forallImpl),
+ ("exists", eager  existsImpl),
+ ("add",    eager  addImpl),
+ ("get",    eager  getImpl),
+ ("mem",    eager  memImpl),
+ ("remove", eager  removeImpl)]
