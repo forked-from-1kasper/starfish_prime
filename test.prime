@@ -23,6 +23,9 @@
 
 (defmacro semiquote σ (semiquote/eager σ))
 
+(defmacro DICT σ (list 'dict (cons 'list σ)))
+(defmacro SET  σ (list 'set  (cons 'list σ)))
+
 (defmacro let σ
   (cons (cons 'λ (cons (odd-elements (car σ)) (cdr σ)))
         (even-elements (car σ))))
@@ -32,8 +35,7 @@
     (list 'if (list '= (list 'formula name) statement)
       nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
-(defmacro DICT σ (list 'dict (cons 'list σ)))
-(defmacro SET  σ (list 'set  (cons 'list σ)))
+(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'define ε (list 'var (show ε)))) σ)))
 
 ;;;;
 
@@ -74,15 +76,17 @@
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
 (defun →-intro (P T) (mp T (veq (formula T) P)))
 
-(defthm principle-of-explosion (⊃ ⊥ (var "P"))
-  (mp (veq ⊥ (¬ (var "P")))
-      (mp (→-intro ⊥ (¬¬-elim (var "P")))
-          (cr ⊥ (¬¬ (var "P")) (var "P")))))
+(variables P Q R α β γ)
 
-(defthm I (⊃ (var "α") (var "α"))
-  (mp (veq (var "α") (var "α"))
-      (mp (veq (var "α") (⊃ (var "α") (var "α")))
-          (cr (var "α") (⊃ (var "α") (var "α")) (var "α")))))
+(defthm principle-of-explosion (⊃ ⊥ P)
+  (mp (veq ⊥ (¬ P))
+      (mp (→-intro ⊥ (¬¬-elim P))
+          (cr ⊥ (¬¬ P) P))))
+
+(defthm I (⊃ α α)
+  (mp (veq α α)
+      (mp (veq α (⊃ α α))
+          (cr α (⊃ α α) α))))
 
 (defthm truth ⊤ (invariance (DICT "α" ⊥) I))
 
@@ -91,59 +95,42 @@
 
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun pop (T)
-  (case (formula T) (⊃ (var "P") (⊃ (var "P") (var "Q")))
+  (case (formula T) (⊃ P (⊃ P Q))
     (mp (invariance (DICT "α" P) I) (mp T (cr P P Q)))))
 
-(defthm cut (⊃ (var "P") (⊃ (⊃ (var "P") (var "Q")) (var "Q")))
-  (let (T₁ (→-intro (var "P")
-             (mp (invariance (DICT "α" (⊃ (var "P") (var "Q"))) I)
-                 (cr (⊃ (var "P") (var "Q")) (var "P") (var "Q"))))
-        T₂ (cr (var "P")
-               (⊃ (⊃ (var "P") (var "Q")) (var "P"))
-               (⊃ (⊃ (var "P") (var "Q")) (var "Q")))
-        T₃ (veq (var "P") (⊃ (var "P") (var "Q"))))
+(defthm cut (⊃ P (⊃ P Q) Q)
+  (let (T₁ (→-intro P
+             (mp (invariance (DICT "α" (⊃ P Q)) I)
+                 (cr (⊃ P Q) P Q)))
+        T₂ (cr P
+               (⊃ (⊃ P Q) P)
+               (⊃ (⊃ P Q) Q))
+        T₃ (veq P (⊃ P Q)))
     (mp T₃ (mp T₁ T₂))))
 
-(defthm ¬¬-intro (⊃ (var "α") (¬¬ (var "α")))
-  (invariance (DICT "P" (var "α") "Q" ⊥) cut))
+(defthm ¬¬-intro (⊃ α (¬¬ α))
+  (invariance (DICT "P" α "Q" ⊥) cut))
 
-(defthm →-comm (⊃ (⊃ (var "P") (var "Q") (var "R"))
-                  (⊃ (var "Q") (var "P") (var "R")))
-  (let (T₁ (mp (invariance (DICT "P" (var "Q") "Q" (var "R")) cut)
-               (mp (→-intro (var "Q") (veq (⊃ (⊃ (var "Q") (var "R")) (var "R")) (var "P")))
-                   (cr (var "Q")
-                       (⊃ (⊃ (var "Q") (var "R")) (var "R"))
-                       (⊃ (var "P") (⊃ (var "Q") (var "R")) (var "R")))))
-        T₂ (→-intro (var "Q") (cr (var "P")
-                                  (⊃ (var "Q") (var "R"))
-                                  (var "R")))
-        T₃ (cr (var "Q")
-               (⊃ (var "P") (⊃ (var "Q") (var "R")) (var "R"))
-               (⊃ (⊃ (var "P") (var "Q") (var "R")) (var "P") (var "R")))
-        T₄ (cr (var "Q")
-               (⊃ (var "P") (var "Q") (var "R"))
-               (⊃ (var "P") (var "R")))
-        T₅ (cr (⊃ (var "P") (var "Q") (var "R"))
-               (⊃ (var "Q") (var "P") (var "Q") (var "R"))
-               (⊃ (var "Q") (var "P") (var "R")))
-        T₆ (veq (⊃ (var "P") (⊃ (var "Q") (var "R")))
-                (var "Q")))
-    (mp T₆ (mp (→-intro (⊃ (var "P") (var "Q") (var "R")) (mp (mp T₁ (mp T₂ T₃)) T₄)) T₅))))
+(defthm →-comm (⊃ (⊃ P Q R) (⊃ Q P R))
+  (let (T₁ (mp (invariance (DICT "P" Q "Q" R) cut)
+               (mp (→-intro Q (veq (⊃ (⊃ Q R) R) P))
+                   (cr Q (⊃ (⊃ Q R) R) (⊃ P (⊃ Q R) R))))
+        T₂ (→-intro Q (cr P (⊃ Q R) R))
+        T₃ (cr Q (⊃ P (⊃ Q R) R) (⊃ (⊃ P Q R) P R))
+        T₄ (cr Q (⊃ P Q R) (⊃ P R))
+        T₅ (cr (⊃ P Q R) (⊃ Q P Q R) (⊃ Q P R))
+        T₆ (veq (⊃ P (⊃ Q R)) Q))
+    (mp T₆ (mp (→-intro (⊃ P Q R) (mp (mp T₁ (mp T₂ T₃)) T₄)) T₅))))
 
 ;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
-(defthm hypsyll (⊃ (⊃ (var "Q") (var "R"))
-                   (⊃ (var "P") (var "Q"))
-                   (⊃ (var "P") (var "R")))
-  (let (T₁ (mp (cr (var "P") (var "Q") (var "R"))
-               (veq (⊃ (⊃ (var "P") (var "Q") (var "R"))
-                       (⊃ (var "P") (var "Q"))
-                       (⊃ (var "P") (var "R")))
-                    (⊃ (var "Q") (var "R"))))
-        T₂ (cr (⊃ (var "Q") (var "R"))
-               (⊃ (var "P") (var "Q") (var "R"))
-               (⊃ (⊃ (var "P") (var "Q"))
-                  (⊃ (var "P") (var "R"))))
-        T₃ (veq (⊃ (var "Q") (var "R")) (var "P")))
+(defthm hypsyll (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
+  (let (T₁ (mp (cr P Q R)
+               (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))
+                    (⊃ Q R)))
+        T₂ (cr (⊃ Q R)
+               (⊃ P Q R)
+               (⊃ (⊃ P Q) (⊃ P R)))
+        T₃ (veq (⊃ Q R) P))
     (mp T₃ (mp T₁ T₂))))
 
 ;;;;
@@ -166,7 +153,7 @@
   (print ψ " & " (dup ψ) "\n"))
 
 (print (invariance (DICT "α" (var "A")) I) "\n")
-(print (¬¬-elim (var "P")) "\n")
+(print (¬¬-elim P) "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))
 

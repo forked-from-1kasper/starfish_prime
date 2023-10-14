@@ -8,6 +8,7 @@ val evalImpl = unary  (fn (E, e)      => Expr.eval E e)
 
 val symbolImpl = unary (fn (E, e) => Symbol (Expr.getString e))
 val typeofImpl = unary (fn (_, e) => Symbol (Expr.typeof e))
+val showImpl   = unary (fn (_, e) => String (Expr.show e))
 
 val Meta =
 [("lambda",   lambda),
@@ -18,6 +19,7 @@ val Meta =
  ("quote",    special (unary (fn (_, e) => e))),
  ("symbol",   eager symbolImpl),
  ("eval",     eager evalImpl),
+ ("show",     eager showImpl),
  ("=",        eager equal),
  ("nil",      Expr.eps),
  ("typeof",   eager typeofImpl)]
