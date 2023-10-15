@@ -20,6 +20,7 @@ val freeImpl  = binary (fn (_, e1, e2) => Formula (Formula.unbind (Expr.getFormu
 
 val rebindImpl = binary (fn (_, e1, e2) => Formula (Formula.rebind (Expr.getString e1) (Expr.getFormula e2)))
 val fvImpl     = unary  (fn (_, e)      => Set (Formula.fv (Expr.getFormula e)))
+val funImpl    = unary  (fn (_, e)      => Set (Formula.Fun (Expr.getFormula e)))
 val occurImpl  = binary (fn (_, e1, e2) => Bool (Formula.occur (Expr.getString e1) (Expr.getFormula e2)))
 val kindofImpl = unary  (fn (_, e)      => Symbol (Formula.kind (Expr.getFormula e)))
 val unifyImpl  = binary (fn (_, e1, e2) => Dict (Dict.map Formula (Formula.unify (Dict.empty ()) (Expr.getFormula e1) (Expr.getFormula e2))))
@@ -52,6 +53,7 @@ val Math =
  ("free",      eager freeImpl),
  ("rebind",    eager rebindImpl),
  ("fv",        eager fvImpl),
+ ("Fun",       eager funImpl),
  ("kindof",    eager kindofImpl),
  ("occur?",    eager occurImpl),
  ("formula",   eager formulaImpl),

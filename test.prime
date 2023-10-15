@@ -1,12 +1,14 @@
-(define cadr   (λ (xs) (car (cdr xs))))
-(define cddr   (λ (xs) (cdr (cdr xs))))
-(define caddr  (λ (xs) (car (cdr (cdr xs)))))
-(define cdddr  (λ (xs) (car (cdr (cdr xs)))))
-(define cadddr (λ (xs) (car (cdr (cdr (cdr xs))))))
-(define cddddr (λ (xs) (cdr (cdr (cdr (cdr xs))))))
+(define "def" (macro (e₁ e₂) (list 'define (show e₁) e₂)))
 
-(define defun    (macro σ (list 'define (car σ) (cons 'λ (cons (cadr σ) (cddr σ))))))
-(define defmacro (macro σ (list 'define (car σ) (cons 'macro (cons (cadr σ) (cddr σ))))))
+(def cadr   (λ (xs) (car (cdr xs))))
+(def cddr   (λ (xs) (cdr (cdr xs))))
+(def caddr  (λ (xs) (car (cdr (cdr xs)))))
+(def cdddr  (λ (xs) (car (cdr (cdr xs)))))
+(def cadddr (λ (xs) (car (cdr (cdr (cdr xs))))))
+(def cddddr (λ (xs) (cdr (cdr (cdr (cdr xs))))))
+
+(def defun    (macro σ (list 'define (show (car σ)) (cons 'λ (cons (cadr σ) (cddr σ))))))
+(def defmacro (macro σ (list 'define (show (car σ)) (cons 'macro (cons (cadr σ) (cddr σ))))))
 
 (defun idfun (x) x)
 (defun const (x y) x)
@@ -31,15 +33,15 @@
         (even-elements (car σ))))
 
 (defmacro defthm (name statement proof)
-  (list 'progn (list 'define name proof)
+  (list 'progn (list 'def name proof)
     (list 'if (list '= (list 'formula name) statement)
       nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
-(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'define ε (list 'var (show ε)))) σ)))
+(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'def ε (list 'var (show ε)))) σ)))
 
 ;;;;
 
-(define ⊥ (app "false" nil))
+(def ⊥ (app "false" nil))
 
 (defun ¬    (P) (⊃ P ⊥))
 (defun ¬¬   (P) (¬ (¬ P)))
@@ -48,16 +50,36 @@
 
 (defun impl (P Q) (app "Impl" (list P Q)))
 
-(define ⊤ (impl ⊥ ⊥))
+(def ⊤ (impl ⊥ ⊥))
 (defun ⊃ σ (if (= σ nil) ⊤ (foldr impl σ)))
 
 (defun Proj (τ n) (get n (cdr τ)))
 (defun Arity (τ) (length (cdr τ)))
 
+(defun assert-subset (A B F) (each (λ (a) (if (mem a B) true (F a))) A))
+
 (deftheory ZOL ;; zeroth-order logic
   (defun well-formed? σ
     (if (forall (λ (ε) (= (theory ε) "ZOL")) σ) nil
         (fail "expected theorem of zeroth-order logic")))
+
+  (let (E (ref (SET "Impl" "false")))
+    (defun define-term (φ σ τ)
+      (if (not (= (typeof τ) 'formula))
+          (fail "expected formula of zeroth-order logic"))
+
+      (if (mem φ (deref E)) (fail φ "is already declared"))
+
+      (assert-subset (fv τ)  (set σ)   (λ (x) (fail "unknown variable" x)))
+      (assert-subset (Fun τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
+
+      (assign! E (add φ (deref E)))
+
+      (define φ (if (= (length σ) 0) (app φ nil) (λ σ′ (app φ σ′))))
+
+      (let (R (app φ (mapcar var σ)))
+        (define (+ φ "-intro") (postulate (⊃ τ R)))
+        (define (+ φ "-elim")  (postulate (⊃ R τ))))))
 
   (defun invariance (θ T) (well-formed? T)
     (postulate (subst θ (formula T))))
@@ -72,6 +94,15 @@
   (defun cr (α β γ) (postulate (⊃ (⊃ α β γ) (⊃ α β) (⊃ α γ))))
 
   (defun ¬¬-elim (α) (postulate (⊃ (¬¬ α) α))))
+
+(defmacro defterm σ
+  (let (φ (car σ) Π (mapcar show (cadr σ)))
+    (let (ε (cons (cons 'lambda (cdr σ)) (mapcar var Π)))
+      (list 'define-term (show φ) (cons 'list Π) ε))))
+
+(defterm Or  (P Q) (⊃ (¬ P) Q))
+(defterm And (P Q) (¬ (⊃ P (¬ Q))))
+(defterm Iff (P Q) (And (⊃ P Q) (⊃ Q P)))
 
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
 (defun →-intro (P T) (mp T (veq (formula T) P)))
@@ -138,9 +169,9 @@
 (defthm test-thm (⊃ (var "B") (var "B"))
   (invariance (DICT "α" (var "B")) I))
 
-(define ∃ (λ (x P) (binder "∃" x P)))
+(def ∃ (λ (x P) (binder "∃" x P)))
 
-(define τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
+(def τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
 (print (subst (DICT "x" (var "y")) τ₀) "\n") ; “y” is already captured, so it’s safe to have it in substitution
 (print (subst (DICT "x" (var "z")) τ₀) "\n")
 (print (free (app "T" nil) τ₀) "\n")
@@ -164,7 +195,7 @@
         (not (= (deref n) 5))))
 (newline)
 
-(define generate-macro (λ (name) (macro (y) (list '+ name y))))
+(def generate-macro (λ (name) (macro (y) (list '+ name y))))
 
 (print "fin")
 (newline)

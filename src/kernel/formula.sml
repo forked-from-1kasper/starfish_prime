@@ -104,6 +104,17 @@ struct
     loop (Bag.empty ())
   end
 
+  val Fun =
+  let
+      fun loop fs = fn
+      Fv _          => fs
+    | Bv _          => fs
+    | Binder (_, t) => loop fs t
+    | App (f, ts)   => List.foldl (fn (e, b) => loop b e) (Bag.add f fs) ts
+  in
+    loop (Bag.empty ())
+  end
+
   fun unify ss t1 t2 =
   case (t1, t2) of
     (Fv x, t) =>

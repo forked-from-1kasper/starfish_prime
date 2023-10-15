@@ -47,29 +47,3 @@ fun quaternary f E = fn
 fun eager   f = Lambda (fn (E, e) => f E (List.map (Expr.eval E) e))
 fun effect  f = Lambda (fn (E, e) => (f E (List.map (Expr.eval E) e); Expr.eps))
 fun special f = Lambda (fn (E, e) => f E e)
-
-fun variadic x ys E = Environment.upLocal E x (List ys)
-
-fun uniadic xs ys E =
-  ListPair.foldlEq (fn (k, v, E') => Environment.upLocal E' k v) E (List.map Expr.getSymbol xs, ys)
-  handle ListPair.UnequalLengths => raise (InvalidArity ([List.length xs], List.length ys))
-
-fun lambdaImpl unpack E1 body =
-  Lambda (fn (E2, e) => Expr.progn (unpack (List.map (Expr.eval E2) e) E1) body)
-
-fun macroImpl unpack E1 body =
-  Lambda (fn (E2, e) => Expr.eval E2 (Expr.progn (unpack e E1) body))
-
-exception InvalidParamPack
-
-val lambda =
-  special (fn E => fn
-      List xs  :: ys => lambdaImpl (uniadic xs) E ys
-    | Symbol x :: ys => lambdaImpl (variadic x) E ys
-    | _              => raise InvalidParamPack)
-
-val macro =
-  special (fn E => fn
-      List xs  :: ys => macroImpl (uniadic xs) E ys
-    | Symbol x :: ys => macroImpl (variadic x) E ys
-    | _              => raise InvalidParamPack)
