@@ -104,6 +104,10 @@
 (defterm And (P Q) (¬ (⊃ P (¬ Q))))
 (defterm Iff (P Q) (And (⊃ P Q) (⊃ Q P)))
 
+(defun ∨ σ (foldr Or  σ))
+(defun ∧ σ (foldr And σ))
+(def ↔ Iff)
+
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
 (defun →-intro (P T) (mp T (veq (formula T) P)))
 
@@ -139,8 +143,8 @@
         T₃ (veq P (⊃ P Q)))
     (mp T₃ (mp T₁ T₂))))
 
-(defthm ¬¬-intro (⊃ α (¬¬ α))
-  (invariance (DICT "P" α "Q" ⊥) cut))
+;; Γ ⊢ P → ¬¬P
+(defun ¬¬-intro (α) (invariance (DICT "P" α "Q" ⊥) cut))
 
 (defthm →-comm (⊃ (⊃ P Q R) (⊃ Q P R))
   (let (T₁ (mp (invariance (DICT "P" Q "Q" R) cut)
@@ -153,8 +157,13 @@
         T₆ (veq (⊃ P (⊃ Q R)) Q))
     (mp T₆ (mp (→-intro (⊃ P Q R) (mp (mp T₁ (mp T₂ T₃)) T₄)) T₅))))
 
+;; Γ ⊢ P → Q → R ⊃ Γ ⊢ Q → P → R
+(defun flip (T)
+  (case (formula T) (⊃ P Q R)
+    (mp T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
+
 ;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
-(defthm hypsyll (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
+(defthm hypsyll₁ (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
   (let (T₁ (mp (cr P Q R)
                (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))
                     (⊃ Q R)))
@@ -163,6 +172,53 @@
                (⊃ (⊃ P Q) (⊃ P R)))
         T₃ (veq (⊃ Q R) P))
     (mp T₃ (mp T₁ T₂))))
+
+(defthm hypsyll₂ (⊃ (⊃ P Q) (⊃ Q R) (⊃ P R)) (flip hypsyll₁))
+
+(defun →-trans σ
+  (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
+            (mp T₁ (mp T₂ (invariance (DICT "P" P "Q" Q "R" R) hypsyll₁))))))
+    (foldr φ σ)))
+
+;; Γ ⊢ Q → R ⊃ Γ ⊢ (P → Q) → (P → R)
+(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp T (invariance (DICT "P" P "Q" Q "R" R) hypsyll₁))))
+
+;; Γ ⊢ P → Q ⊃ Γ ⊢ (Q → R) → (P → R)
+(defun →-con (R T) (case (formula T) (⊃ P Q) (mp T (invariance (DICT "P" P "Q" Q "R" R) hypsyll₂))))
+
+(defun exact (φ T) (invariance (unify (formula T) φ) T))
+
+(def contrapos₁ (exact (⊃ (⊃ P Q) (⊃ (¬ Q) (¬ P))) hypsyll₂))
+
+(defthm contrapos₂ (⊃ (⊃ (¬ Q) (¬ P)) (⊃ P Q))
+  (→-trans (invariance (DICT "P" (¬ Q) "Q" (¬ P)) contrapos₁)
+           (→-con (¬¬ Q) (¬¬-intro P))
+           (→-ant P (¬¬-elim Q))))
+
+(defthm contrapos₃ (⊃ (⊃ P (¬ Q)) (⊃ Q (¬ P)))
+  (→-trans (invariance (DICT "P" P "Q" (¬ Q)) contrapos₁)
+           (→-con (¬ P) (¬¬-intro Q))))
+
+(defthm contrapos₄ (⊃ (⊃ (¬ P) Q) (⊃ (¬ Q) P))
+  (→-trans (invariance (DICT "P" (¬ P) "Q" Q) contrapos₁)
+           (→-ant (¬ Q) (¬¬-elim P))))
+
+(defthm absurd₁ (⊃ (¬ P) P Q)
+  (→-ant P (invariance (DICT "P" Q) principle-of-explosion)))
+
+(defthm absurd₂ (⊃ P (¬ P) Q) (flip absurd₁))
+
+(defthm ∧-left (⊃ (∧ P Q) P)
+  (→-trans And-elim (mp (invariance (DICT "P" P "Q" (¬ Q)) absurd₁)
+                        (invariance (DICT "P" P "Q" (⊃ P (¬ Q))) contrapos₄))))
+
+(defthm ∧-right (⊃ (∧ P Q) Q)
+  (→-trans And-elim (mp (veq (¬ Q) P) (invariance (DICT "P" Q "Q" (⊃ P (¬ Q))) contrapos₄))))
+
+(defthm ∧-intro (⊃ P Q (∧ P Q))
+  (mp (invariance (DICT "P" P "Q" (¬ Q)) cut)
+      (→-ant P (→-trans (invariance (DICT "P" (⊃ P (¬ Q)) "Q" Q) contrapos₃)
+                        (→-ant Q And-intro)))))
 
 ;;;;
 
