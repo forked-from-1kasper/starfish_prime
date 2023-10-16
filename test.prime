@@ -108,6 +108,8 @@
 (defun ∧ σ (foldr And σ))
 (def ↔ Iff)
 
+(defun mp₂ (T₁ T₂ T) (mp T₂ (mp T₁ T)))
+
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
 (defun →-intro (P T) (mp T (veq (formula T) P)))
 
@@ -167,11 +169,11 @@
   (let (T₁ (mp (cr P Q R)
                (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))
                     (⊃ Q R)))
-        T₂ (cr (⊃ Q R)
+        T₂ (veq (⊃ Q R) P)
+        T₃ (cr (⊃ Q R)
                (⊃ P Q R)
-               (⊃ (⊃ P Q) (⊃ P R)))
-        T₃ (veq (⊃ Q R) P))
-    (mp T₃ (mp T₁ T₂))))
+               (⊃ (⊃ P Q) (⊃ P R))))
+    (mp₂ T₁ T₂ T₃)))
 
 (defthm hypsyll₂ (⊃ (⊃ P Q) (⊃ Q R) (⊃ P R)) (flip hypsyll₁))
 
@@ -219,6 +221,28 @@
   (mp (invariance (DICT "P" P "Q" (¬ Q)) cut)
       (→-ant P (→-trans (invariance (DICT "P" (⊃ P (¬ Q)) "Q" Q) contrapos₃)
                         (→-ant Q And-intro)))))
+
+(defthm ∧-rec (⊃ (⊃ R P) (⊃ R Q) (⊃ R (∧ P Q)))
+  (→-trans (→-ant R ∧-intro) (cr R Q (∧ P Q))))
+
+(defthm ∧-comm (⊃ (∧ P Q) (∧ Q P))
+  (mp₂ ∧-right ∧-left (invariance (DICT "P" Q "Q" P "R" (∧ P Q)) ∧-rec)))
+
+(defthm ∧-assoc-left (⊃ (∧ (∧ P Q) R) (∧ P (∧ Q R)))
+  (mp₂ (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-left)
+       (mp₂ (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-right)
+            (exact (⊃ (∧ (∧ P Q) R) R) ∧-right)
+            (invariance (DICT "P" Q "Q" R "R" (∧ (∧ P Q) R)) ∧-rec))
+       (invariance (DICT "P" P "Q" (∧ Q R) "R" (∧ (∧ P Q) R)) ∧-rec)))
+
+(defthm ∧-assoc-right (⊃ (∧ P (∧ Q R)) (∧ (∧ P Q) R))
+  (mp₂ (mp₂ (exact (⊃ (∧ P (∧ Q R)) P) ∧-left)
+            (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
+                     (exact (⊃ (∧ Q R) Q) ∧-left))
+            (invariance (DICT "P" P "Q" Q "R" (∧ P (∧ Q R))) ∧-rec))
+       (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
+                (exact (⊃ (∧ Q R) R) ∧-right))
+       (invariance (DICT "P" (∧ P Q) "Q" R "R" (∧ P (∧ Q R))) ∧-rec)))
 
 ;;;;
 
