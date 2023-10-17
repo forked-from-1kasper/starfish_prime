@@ -58,11 +58,11 @@
 
 (defun assert-subset (A B F) (each (λ (a) (if (mem a B) true (F a))) A))
 
-(deftheory ZOL ;; zeroth-order logic
-  (defun well-formed? σ
-    (if (forall (λ (ε) (= (theory ε) "ZOL")) σ) nil
-        (fail "expected theorem of zeroth-order logic")))
+(defun well-formed? σ
+  (if (forall (λ (ε) (= (theory ε) (car σ))) (cdr σ)) nil
+      (fail "expected theorem of " (car σ))))
 
+(deftheory ZOL ;; zeroth-order logic
   (let (E (ref (SET "Impl" "false")))
     (defun define-term (φ σ τ)
       (if (not (= (typeof τ) 'formula))
@@ -81,10 +81,10 @@
         (define (+ φ "-intro") (postulate (⊃ τ R)))
         (define (+ φ "-elim")  (postulate (⊃ R τ))))))
 
-  (defun invariance (θ T) (well-formed? T)
+  (defun invariance (θ T) (well-formed? "ZOL" T)
     (postulate (subst θ (formula T))))
 
-  (defun mp (T₁ T₂) (well-formed? T₁ T₂)
+  (defun mp (T₁ T₂) (well-formed? "ZOL" T₁ T₂)
     (case (formula T₁) (var "P")
           (formula T₂) (⊃ (var "P") (var "Q"))
       (postulate Q)))
@@ -243,6 +243,83 @@
        (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
                 (exact (⊃ (∧ Q R) R) ∧-right))
        (invariance (DICT "P" (∧ P Q) "Q" R "R" (∧ P (∧ Q R))) ∧-rec)))
+
+;;;;
+
+(defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
+
+
+;(defun Lam  (x M)   (binder "λ" x M))
+
+(defun Lam σ (foldr (λ (x M) (binder "λ" x M)) σ))
+
+(defun App σ (foldl (λ (M N) (app "App" (list N M))) σ))
+
+(deftheory λ
+  (defun η↓ (x M)
+    (if (occur? x M) (fail "variable" x "cannot be free in" M))
+    (postulate (Eval (Lam x (App M (var x))) M)))
+
+  (defun β↓ (x M N) (postulate (Eval (App (Lam x M) N) (subst (DICT x N) M))))
+
+  (defun Refl↓ (E) (postulate (Eval E E)))
+
+  (defun Trans↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
+    (case (formula T₁) (Eval (var "M") (var "N"))
+          (formula T₂) (Eval (var "N") (var "K"))
+      (postulate (Eval M K))))
+
+  (defun App↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
+    (case (formula T₁) (Eval (var "M₁") (var "M₂"))
+          (formula T₂) (Eval (var "N₁") (var "N₂"))
+      (postulate (Eval (App M₁ N₁) (App M₂ N₂)))))
+
+  (defun Lam↓ (x T) (well-formed? "λ" T)
+    (case (formula T) (Eval (var "M") (var "N"))
+      (postulate (Eval (Lam x M) (Lam x N))))))
+
+(defun Eager↓ (freshvar E)
+  (if (= (kindof E) 'app)
+      (case E (App (var "M") (var "N"))
+        (let (T₁ (Eager↓ freshvar M) T₂ (Eager↓ freshvar N))
+          (case (formula T₁) (Eval (var "M₁") (var "M₂"))
+                (formula T₂) (Eval (var "N₁") (var "N₂"))
+            (if (= (kindof M₂) 'binder)
+                (let (ε# (freshvar))
+                  (let (T (Trans↓ (App↓ T₁ T₂) (β↓ ε# (free (var ε#) M₂) N₂)))
+                    (case (formula T) (Eval (var "E₁") (var "E₂"))
+                      (Trans↓ T (Eager↓ freshvar E₂)))))
+                (App↓ T₁ T₂)))))
+
+      (= (kindof E) 'binder)
+      (let (ε# (freshvar))
+        (let (T (Eager↓ freshvar (free (var ε#) E)))
+          (Lam↓ ε# T)))
+
+      (Refl↓ E)))
+
+(def idfunλ (Lam "a" (var "a")))
+(def constλ (Lam "a" (Lam "b" (var "a"))))
+(def Mλ (Lam "x" (App (var "x") (var "x"))))
+
+;; Church numerals
+(def zeroλ (Lam "f" "x" (var "x")))
+(def succλ (Lam "n" "f" "x" (App (var "f") (App (var "n") (var "f") (var "x")))))
+(def plusλ (Lam "m" "n" "f" "x" (App (var "m") (var "f") (App (var "n") (var "f") (var "x")))))
+
+(let (n (ref 0))
+  (defun gensym ()
+    (assign! n (+ (deref n) 1))
+    (+ "#" (show (deref n)))))
+
+(def oneλ   (App succλ zeroλ))
+(def twoλ   (App succλ oneλ))
+(def threeλ (App succλ twoλ))
+(def fourλ  (App succλ threeλ))
+(def fiveλ  (App succλ fourλ))
+
+(print (Eager↓ gensym (App plusλ twoλ threeλ)) "\n"
+       (Eager↓ gensym fiveλ) "\n")
 
 ;;;;
 

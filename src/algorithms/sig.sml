@@ -25,7 +25,7 @@ signature DICT =
 sig
   type key
   type 'a t
-  
+
   val empty     : unit -> 'a t
   val isEmpty   : 'a t -> bool
   val add       : key -> 'a -> 'a t -> 'a t
@@ -80,12 +80,12 @@ struct
   type el = D.key
   type t  = unit D.t
 
-  val empty = D.empty
+  val empty   = D.empty
   val isEmpty = D.isEmpty
 
-  fun add v = D.add v ()
+  fun add v  = D.add v ()
   val remove = D.remove
-  val mem = D.mem
+  val mem    = D.mem
 
   fun iter f = D.iter (fn k => fn () => f k)
 
@@ -95,7 +95,7 @@ struct
 
   val inter = D.inter (fn k1 => fn k2 => fn () => ())
 
-  fun forAll f = D.forAll (fn k => fn () => f k)
+  fun forAll  f = D.forAll  (fn k => fn () => f k)
   fun forAll2 f = D.forAll2 (fn k => fn () => fn () => f k)
 
   fun fold f = D.fold (fn k => fn () => f k)
