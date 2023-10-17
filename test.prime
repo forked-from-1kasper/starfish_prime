@@ -248,11 +248,7 @@
 
 (defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
 
-
-;(defun Lam  (x M)   (binder "λ" x M))
-
 (defun Lam σ (foldr (λ (x M) (binder "λ" x M)) σ))
-
 (defun App σ (foldl (λ (M N) (app "App" (list N M))) σ))
 
 (deftheory λ
