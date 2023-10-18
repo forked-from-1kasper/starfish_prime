@@ -84,7 +84,7 @@
   (defun invariance (θ T) (well-formed? "ZOL" T)
     (postulate (subst θ (formula T))))
 
-  (defun mp (T₁ T₂) (well-formed? "ZOL" T₁ T₂)
+  (defun modus-ponens (T₁ T₂) (well-formed? "ZOL" T₁ T₂)
     (case (formula T₁) (var "P")
           (formula T₂) (⊃ (var "P") (var "Q"))
       (postulate Q)))
@@ -108,24 +108,36 @@
 (defun ∧ σ (foldr And σ))
 (def ↔ Iff)
 
-(defun mp₂ (T₁ T₂ T) (mp T₂ (mp T₁ T)))
+(defun dequeue (E)
+  (let (ε (car (deref E)))
+    (assign! E (cdr (deref E))) ε))
+
+(defun refine σ
+  (let (T (car σ) ω (ref (cdr σ)))
+    (invariance (fold (λ (k Δ) (add k (dequeue ω) Δ))
+                      (DICT) (fv (formula T))) T)))
+
+(defun exact (φ T) (invariance (unify (formula T) φ) T))
+
+;; Γ ⊢ P₁ → P₂ → ... → Pₙ → Q ⊃ Γ ⊢ P₁ ⊃ Γ ⊢ P₂ ⊃ ... ⊃ Γ ⊢ Pₙ ⊃ Γ ⊢ Q
+(defun mp σ (foldl modus-ponens (car σ) (cdr σ)))
 
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
-(defun →-intro (P T) (mp T (veq (formula T) P)))
+(defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
 
 (variables P Q R α β γ)
 
-(defthm principle-of-explosion (⊃ ⊥ P)
-  (mp (veq ⊥ (¬ P))
-      (mp (→-intro ⊥ (¬¬-elim P))
+(defthm exfalso (⊃ ⊥ P)
+  (modus-ponens (veq ⊥ (¬ P))
+      (modus-ponens (→-intro ⊥ (¬¬-elim P))
           (cr ⊥ (¬¬ P) P))))
 
-(defthm I (⊃ α α)
-  (mp (veq α α)
-      (mp (veq α (⊃ α α))
+(defthm →-refl (⊃ α α)
+  (modus-ponens (veq α α)
+      (modus-ponens (veq α (⊃ α α))
           (cr α (⊃ α α) α))))
 
-(defthm truth ⊤ (invariance (DICT "α" ⊥) I))
+(defthm truth ⊤ (invariance (DICT "α" ⊥) →-refl))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
 (defun dup (T) (→-intro (Proj (formula T) 0) T))
@@ -133,116 +145,107 @@
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun pop (T)
   (case (formula T) (⊃ P (⊃ P Q))
-    (mp (invariance (DICT "α" P) I) (mp T (cr P P Q)))))
+    (mp (cr P P Q) T (refine →-refl P))))
 
 (defthm cut (⊃ P (⊃ P Q) Q)
-  (let (T₁ (→-intro P
-             (mp (invariance (DICT "α" (⊃ P Q)) I)
-                 (cr (⊃ P Q) P Q)))
-        T₂ (cr P
-               (⊃ (⊃ P Q) P)
-               (⊃ (⊃ P Q) Q))
+  (let (T₁ (cr P (⊃ (⊃ P Q) P) (⊃ (⊃ P Q) Q))
+        T₂ (→-intro P (mp (cr (⊃ P Q) P Q) (refine →-refl (⊃ P Q))))
         T₃ (veq P (⊃ P Q)))
-    (mp T₃ (mp T₁ T₂))))
+    (mp T₁ T₂ T₃)))
 
 ;; Γ ⊢ P → ¬¬P
 (defun ¬¬-intro (α) (invariance (DICT "P" α "Q" ⊥) cut))
 
 (defthm →-comm (⊃ (⊃ P Q R) (⊃ Q P R))
-  (let (T₁ (mp (invariance (DICT "P" Q "Q" R) cut)
-               (mp (→-intro Q (veq (⊃ (⊃ Q R) R) P))
-                   (cr Q (⊃ (⊃ Q R) R) (⊃ P (⊃ Q R) R))))
+  (let (T₁ (mp (cr Q (⊃ (⊃ Q R) R) (⊃ P (⊃ Q R) R))
+               (→-intro Q (veq (⊃ (⊃ Q R) R) P))
+               (refine cut Q R))
         T₂ (→-intro Q (cr P (⊃ Q R) R))
         T₃ (cr Q (⊃ P (⊃ Q R) R) (⊃ (⊃ P Q R) P R))
         T₄ (cr Q (⊃ P Q R) (⊃ P R))
         T₅ (cr (⊃ P Q R) (⊃ Q P Q R) (⊃ Q P R))
         T₆ (veq (⊃ P (⊃ Q R)) Q))
-    (mp T₆ (mp (→-intro (⊃ P Q R) (mp (mp T₁ (mp T₂ T₃)) T₄)) T₅))))
+    (mp T₅ (→-intro (⊃ P Q R) (mp T₄ (mp T₃ T₂ T₁))) T₆)))
 
 ;; Γ ⊢ P → Q → R ⊃ Γ ⊢ Q → P → R
-(defun flip (T)
-  (case (formula T) (⊃ P Q R)
-    (mp T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
+(defun flip (T) (case (formula T) (⊃ P Q R)
+  (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
 
 ;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
 (defthm hypsyll₁ (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
-  (let (T₁ (mp (cr P Q R)
+  (let (T₁ (modus-ponens (cr P Q R)
                (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))
                     (⊃ Q R)))
         T₂ (veq (⊃ Q R) P)
-        T₃ (cr (⊃ Q R)
-               (⊃ P Q R)
-               (⊃ (⊃ P Q) (⊃ P R))))
-    (mp₂ T₁ T₂ T₃)))
+        T₃ (cr (⊃ Q R) (⊃ P Q R) (⊃ (⊃ P Q) (⊃ P R))))
+    (mp T₃ T₁ T₂)))
 
 (defthm hypsyll₂ (⊃ (⊃ P Q) (⊃ Q R) (⊃ P R)) (flip hypsyll₁))
 
 (defun →-trans σ
   (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
-            (mp T₁ (mp T₂ (invariance (DICT "P" P "Q" Q "R" R) hypsyll₁))))))
+                       (mp (refine hypsyll₁ P Q R) T₂ T₁))))
     (foldr φ σ)))
 
 ;; Γ ⊢ Q → R ⊃ Γ ⊢ (P → Q) → (P → R)
-(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp T (invariance (DICT "P" P "Q" Q "R" R) hypsyll₁))))
+(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ (Q → R) → (P → R)
-(defun →-con (R T) (case (formula T) (⊃ P Q) (mp T (invariance (DICT "P" P "Q" Q "R" R) hypsyll₂))))
-
-(defun exact (φ T) (invariance (unify (formula T) φ) T))
+(defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
 
 (def contrapos₁ (exact (⊃ (⊃ P Q) (⊃ (¬ Q) (¬ P))) hypsyll₂))
 
 (defthm contrapos₂ (⊃ (⊃ (¬ Q) (¬ P)) (⊃ P Q))
-  (→-trans (invariance (DICT "P" (¬ Q) "Q" (¬ P)) contrapos₁)
+  (→-trans (refine contrapos₁ (¬ Q) (¬ P))
            (→-con (¬¬ Q) (¬¬-intro P))
            (→-ant P (¬¬-elim Q))))
 
 (defthm contrapos₃ (⊃ (⊃ P (¬ Q)) (⊃ Q (¬ P)))
-  (→-trans (invariance (DICT "P" P "Q" (¬ Q)) contrapos₁)
+  (→-trans (refine contrapos₁ P (¬ Q))
            (→-con (¬ P) (¬¬-intro Q))))
 
 (defthm contrapos₄ (⊃ (⊃ (¬ P) Q) (⊃ (¬ Q) P))
-  (→-trans (invariance (DICT "P" (¬ P) "Q" Q) contrapos₁)
+  (→-trans (refine contrapos₁ (¬ P) Q)
            (→-ant (¬ Q) (¬¬-elim P))))
 
 (defthm absurd₁ (⊃ (¬ P) P Q)
-  (→-ant P (invariance (DICT "P" Q) principle-of-explosion)))
+  (→-ant P (refine exfalso Q)))
 
 (defthm absurd₂ (⊃ P (¬ P) Q) (flip absurd₁))
 
 (defthm ∧-left (⊃ (∧ P Q) P)
-  (→-trans And-elim (mp (invariance (DICT "P" P "Q" (¬ Q)) absurd₁)
-                        (invariance (DICT "P" P "Q" (⊃ P (¬ Q))) contrapos₄))))
+  (→-trans And-elim (mp (refine contrapos₄ P (⊃ P (¬ Q)))
+                        (refine absurd₁ P (¬ Q)))))
 
 (defthm ∧-right (⊃ (∧ P Q) Q)
-  (→-trans And-elim (mp (veq (¬ Q) P) (invariance (DICT "P" Q "Q" (⊃ P (¬ Q))) contrapos₄))))
+  (→-trans And-elim (modus-ponens (veq (¬ Q) P) (invariance (DICT "P" Q "Q" (⊃ P (¬ Q))) contrapos₄))))
 
 (defthm ∧-intro (⊃ P Q (∧ P Q))
-  (mp (invariance (DICT "P" P "Q" (¬ Q)) cut)
-      (→-ant P (→-trans (invariance (DICT "P" (⊃ P (¬ Q)) "Q" Q) contrapos₃)
-                        (→-ant Q And-intro)))))
+  (mp (→-ant P (→-trans (refine contrapos₃ (⊃ P (¬ Q)) Q)
+                        (→-ant Q And-intro)))
+      (refine cut P (¬ Q))))
 
 (defthm ∧-rec (⊃ (⊃ R P) (⊃ R Q) (⊃ R (∧ P Q)))
   (→-trans (→-ant R ∧-intro) (cr R Q (∧ P Q))))
 
 (defthm ∧-comm (⊃ (∧ P Q) (∧ Q P))
-  (mp₂ ∧-right ∧-left (invariance (DICT "P" Q "Q" P "R" (∧ P Q)) ∧-rec)))
+  (mp (refine ∧-rec Q P (∧ P Q)) ∧-right ∧-left))
 
 (defthm ∧-assoc-left (⊃ (∧ (∧ P Q) R) (∧ P (∧ Q R)))
-  (mp₂ (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-left)
-       (mp₂ (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-right)
-            (exact (⊃ (∧ (∧ P Q) R) R) ∧-right)
-            (invariance (DICT "P" Q "Q" R "R" (∧ (∧ P Q) R)) ∧-rec))
-       (invariance (DICT "P" P "Q" (∧ Q R) "R" (∧ (∧ P Q) R)) ∧-rec)))
+  (mp (refine ∧-rec P (∧ Q R) (∧ (∧ P Q) R))
+      (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-left)
+      (mp (refine ∧-rec Q R (∧ (∧ P Q) R))
+          (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-right)
+          (exact (⊃ (∧ (∧ P Q) R) R) ∧-right))))
 
 (defthm ∧-assoc-right (⊃ (∧ P (∧ Q R)) (∧ (∧ P Q) R))
-  (mp₂ (mp₂ (exact (⊃ (∧ P (∧ Q R)) P) ∧-left)
-            (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
-                     (exact (⊃ (∧ Q R) Q) ∧-left))
-            (invariance (DICT "P" P "Q" Q "R" (∧ P (∧ Q R))) ∧-rec))
-       (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
-                (exact (⊃ (∧ Q R) R) ∧-right))
-       (invariance (DICT "P" (∧ P Q) "Q" R "R" (∧ P (∧ Q R))) ∧-rec)))
+  (mp (refine ∧-rec (∧ P Q) R (∧ P (∧ Q R)))
+      (mp (refine ∧-rec P Q (∧ P (∧ Q R)))
+          (exact (⊃ (∧ P (∧ Q R)) P) ∧-left)
+          (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
+                   (exact (⊃ (∧ Q R) Q) ∧-left)))
+      (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
+               (exact (⊃ (∧ Q R) R) ∧-right))))
 
 ;;;;
 
@@ -296,7 +299,7 @@
 
 (def idfunλ (Lam "a" (var "a")))
 (def constλ (Lam "a" (Lam "b" (var "a"))))
-(def Mλ (Lam "x" (App (var "x") (var "x"))))
+(def Mλ     (Lam "x" (App (var "x") (var "x"))))
 
 ;; Church numerals
 (def zeroλ (Lam "f" "x" (var "x")))
@@ -320,7 +323,7 @@
 ;;;;
 
 (defthm test-thm (⊃ (var "B") (var "B"))
-  (invariance (DICT "α" (var "B")) I))
+  (invariance (DICT "α" (var "B")) →-refl))
 
 (def ∃ (λ (x P) (binder "∃" x P)))
 
@@ -336,7 +339,7 @@
 (let (ψ (cr (var "A") (var "B") (var "C")))
   (print ψ " & " (dup ψ) "\n"))
 
-(print (invariance (DICT "α" (var "A")) I) "\n")
+(print (invariance (DICT "α" (var "A")) →-refl) "\n")
 (print (¬¬-elim P) "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))

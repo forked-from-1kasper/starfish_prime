@@ -24,6 +24,13 @@ in
   fn (e1, e2) => f (E, [Quote e1, Quote e2])
 end
 
+fun getTernary E e0 =
+let
+  val f = Expr.getLam e0
+in
+  fn (e1, e2, e3) => f (E, [Quote e1, Quote e2, Quote e3])
+end
+
 fun nulary f E = fn
   [] => f E
 | xs => raise (InvalidArity ([0], List.length xs))

@@ -77,6 +77,10 @@ in
     [e1, e2]     => foldr0 (getBinary E e1) (Expr.getList e2)
   | [e1, e2, e3] => List.foldr (getBinary E e1) e2 (Expr.getList e3)
   | es           => raise (InvalidArity ([2, 3], List.length es))
+
+  val foldImpl = ternary (fn (E, e1, e2, Dict t) => Dict.fold (fn k => fn v1 => fn v2 => getTernary E e1 (String k, v1, v2)) t e2
+                           | (E, e1, e2, Set t)  => Bag.fold (fn k => fn v => getBinary E e1 (String k, v)) t e2
+                           | (_, _,  _,  e)      => raise (TypeMismatch (e, ["dict", "set"])) )
 end
 
 val forallImpl = binary (fn (E, e1, e2) => Bool (List.all    (Expr.getBool o getUnary E e1) (Expr.getList e2)))
@@ -94,6 +98,7 @@ val Data =
  ("each",   effect eachImpl),
  ("foldl",  eager  foldlImpl),
  ("foldr",  eager  foldrImpl),
+ ("fold",   eager  foldImpl),
  ("forall", eager  forallImpl),
  ("exists", eager  existsImpl),
  ("add",    eager  addImpl),
