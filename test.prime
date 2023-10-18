@@ -171,9 +171,7 @@
 
 ;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
 (defthm hypsyll₁ (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
-  (let (T₁ (modus-ponens (cr P Q R)
-               (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))
-                    (⊃ Q R)))
+  (let (T₁ (mp (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R)) (⊃ Q R)) (cr P Q R))
         T₂ (veq (⊃ Q R) P)
         T₃ (cr (⊃ Q R) (⊃ P Q R) (⊃ (⊃ P Q) (⊃ P R))))
     (mp T₃ T₁ T₂)))
@@ -216,7 +214,8 @@
                         (refine absurd₁ P (¬ Q)))))
 
 (defthm ∧-right (⊃ (∧ P Q) Q)
-  (→-trans And-elim (modus-ponens (veq (¬ Q) P) (invariance (DICT "P" Q "Q" (⊃ P (¬ Q))) contrapos₄))))
+  (→-trans And-elim (mp (refine contrapos₄ Q (⊃ P (¬ Q)))
+                        (veq (¬ Q) P))))
 
 (defthm ∧-intro (⊃ P Q (∧ P Q))
   (mp (→-ant P (→-trans (refine contrapos₃ (⊃ P (¬ Q)) Q)
