@@ -106,7 +106,11 @@
 
 (defun ∨ σ (foldr Or  σ))
 (defun ∧ σ (foldr And σ))
-(def ↔ Iff)
+
+(defun ↔ σ (if (= (length σ) 0) ⊤
+               (= (length σ) 1) (car σ)
+               (= (length σ) 2) (Iff (car σ) (cadr σ))
+               (And (Iff (car σ) (cadr σ)) (apply ↔ (cdr σ)))))
 
 (defun dequeue (E)
   (let (ε (car (deref E)))
