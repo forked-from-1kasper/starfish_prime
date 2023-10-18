@@ -112,6 +112,9 @@
                (= (length σ) 2) (Iff (car σ) (cadr σ))
                (And (Iff (car σ) (cadr σ)) (apply ↔ (cdr σ)))))
 
+(defun enqueue (ε E)
+  (assign! E (cons ε (deref E))))
+
 (defun dequeue (E)
   (let (ε (car (deref E)))
     (assign! E (cdr (deref E))) ε))
