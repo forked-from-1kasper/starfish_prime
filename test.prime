@@ -145,7 +145,7 @@
 
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun contract (T)
-  (case (formula T) (⊃ P (⊃ P Q))
+  (case (formula T) (⊃ P P Q)
     (mp (cr P P Q) T (refine →-refl P))))
 
 (defthm cut (⊃ P (⊃ P Q) Q)
