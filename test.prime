@@ -131,17 +131,11 @@
 
 (variables P Q R α β γ)
 
-(defthm exfalso (⊃ ⊥ P)
-  (modus-ponens (veq ⊥ (¬ P))
-      (modus-ponens (→-intro ⊥ (¬¬-elim P))
-          (cr ⊥ (¬¬ P) P))))
+(defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
 
-(defthm →-refl (⊃ α α)
-  (modus-ponens (veq α α)
-      (modus-ponens (veq α (⊃ α α))
-          (cr α (⊃ α α) α))))
+(defthm →-refl (⊃ α α) (mp (cr α (⊃ α α) α) (veq α (⊃ α α)) (veq α α)))
 
-(defthm truth ⊤ (invariance (DICT "α" ⊥) →-refl))
+(defthm truth ⊤ (refine →-refl ⊥))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
 (defun dup (T) (→-intro (Proj (formula T) 0) T))
