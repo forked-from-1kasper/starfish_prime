@@ -144,7 +144,7 @@
 (defun dup (T) (→-intro (Proj (formula T) 0) T))
 
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
-(defun pop (T)
+(defun contract (T)
   (case (formula T) (⊃ P (⊃ P Q))
     (mp (cr P P Q) T (refine →-refl P))))
 
