@@ -48,15 +48,15 @@
 (defun ¬¬¬  (P) (¬ (¬¬ P)))
 (defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
 
-(defun impl (P Q) (app "Impl" (list P Q)))
+(defun Impl (P Q) (app "Impl" (list P Q)))
 
-(def ⊤ (impl ⊥ ⊥))
-(defun ⊃ σ (if (= σ nil) ⊤ (foldr impl σ)))
+(def ⊤ (Impl ⊥ ⊥))
+(defun ⊃ σ (if (= σ nil) ⊤ (foldr Impl σ)))
 
 (defun Proj (τ n) (get n (cdr τ)))
 (defun Arity (τ) (length (cdr τ)))
 
-(defun assert-subset (A B F) (each (λ (a) (if (mem a B) true (F a))) A))
+(defun assert-subset (A B F) (each (λ (x) (if (mem x B) true (F x))) A))
 
 (defun well-formed? σ
   (if (forall (λ (ε) (= (theory ε) (car σ))) (cdr σ)) nil
@@ -247,6 +247,16 @@
       (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
                (exact (⊃ (∧ Q R) R) ∧-right))))
 
+(defthm ∨-left (⊃ P (∨ P Q))
+  (mp (→-ant P Or-intro) absurd₂))
+
+(defthm ∨-right (⊃ Q (∨ P Q))
+  (mp (→-ant Q Or-intro) (veq Q (¬ P))))
+
+(defthm lem (∨ P (¬ P))
+  (mp (refine Or-intro P (¬ P))
+      (refine →-refl (¬ P))))
+
 ;;;;
 
 (defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
@@ -277,6 +287,9 @@
     (case (formula T) (Eval (var "M") (var "N"))
       (postulate (Eval (Lam x M) (Lam x N))))))
 
+(defun ↓₁ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₁))
+(defun ↓₂ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₂))
+
 (defun Eager↓ (freshvar E)
   (if (= (kindof E) 'app)
       (case E (App (var "M") (var "N"))
@@ -285,15 +298,30 @@
                 (formula T₂) (Eval (var "N₁") (var "N₂"))
             (if (= (kindof M₂) 'binder)
                 (let (ε# (freshvar))
-                  (let (T (Trans↓ (App↓ T₁ T₂) (β↓ ε# (free (var ε#) M₂) N₂)))
-                    (case (formula T) (Eval (var "E₁") (var "E₂"))
-                      (Trans↓ T (Eager↓ freshvar E₂)))))
+                  (let (T (Trans↓ (App↓ T₁ T₂)
+                                  (β↓ ε# (free (var ε#) M₂) N₂)))
+                    (Trans↓ T (Eager↓ freshvar (↓₂ T)))))
                 (App↓ T₁ T₂)))))
 
       (= (kindof E) 'binder)
-      (let (ε# (freshvar))
-        (let (T (Eager↓ freshvar (free (var ε#) E)))
-          (Lam↓ ε# T)))
+      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
+
+      (Refl↓ E)))
+
+(defun Lazy↓ (freshvar E)
+  (if (= (kindof E) 'app)
+      (case E (App (var "M") (var "N"))
+        (let (T (Lazy↓ freshvar M))
+          (case (formula T) (Eval (var "M₁") (var "M₂"))
+            (if (= (kindof M₂) 'binder)
+                (let (ε# (freshvar))
+                  (let (T′ (Trans↓ (App↓ T (Refl↓ N))
+                                   (β↓ ε# (free (var ε#) M₂) N)))
+                    (Trans↓ T′ (Lazy↓ freshvar (↓₂ T′)))))
+                (App↓ T (Lazy↓ freshvar N))))))
+
+      (= (kindof E) 'binder)
+      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
 
       (Refl↓ E)))
 
@@ -305,6 +333,11 @@
 (def zeroλ (Lam "f" "x" (var "x")))
 (def succλ (Lam "n" "f" "x" (App (var "f") (App (var "n") (var "f") (var "x")))))
 (def plusλ (Lam "m" "n" "f" "x" (App (var "m") (var "f") (App (var "n") (var "f") (var "x")))))
+
+;; Church pairs
+(def pairλ (Lam "x" "y" "f" (App (App (var "f") (var "x")) (var "y"))))
+(def fstλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "x")))))
+(def sndλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "y")))))
 
 (let (n (ref 0))
   (defun gensym ()
@@ -318,7 +351,12 @@
 (def fiveλ  (App succλ fourλ))
 
 (print (Eager↓ gensym (App plusλ twoλ threeλ)) "\n"
-       (Eager↓ gensym fiveλ) "\n")
+       (Eager↓ gensym fiveλ) "\n"
+       (Eager↓ gensym (App fstλ (App (App pairλ oneλ) twoλ))) "\n"
+       (Eager↓ gensym (App sndλ (App (App pairλ oneλ) twoλ))) "\n"
+       (Eager↓ gensym (App (App (App fiveλ) (Lam "x" (App (var "S") (var "x"))))
+                                            (var "Z"))) "\n"
+       (Lazy↓ gensym (App (Lam "x" idfunλ) (App Mλ Mλ))) "\n")
 
 ;;;;
 
