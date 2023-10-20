@@ -1,38 +1,22 @@
 (import 'library/common.prime)
 
-(def ⊥ (app "false" nil))
+(def ⊥ (app "Faux" nil))
 
-(defun Impl (P Q) (app "Impl" (list P Q)))
+(defun Implique (P Q) (app "Implique" (list P Q)))
 
-(def ⊤ (Impl ⊥ ⊥))
-(defun ⊃ σ (if (= σ nil) ⊤ (foldr Impl σ)))
+(def ⊤ (Implique ⊥ ⊥))
+(defun ⊃ σ (if (= σ nil) ⊤ (foldr Implique σ)))
 
 (defun ¬    (P) (⊃ P ⊥))
 (defun ¬¬   (P) (¬ (¬ P)))
 (defun ¬¬¬  (P) (¬ (¬¬ P)))
 (defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
 
-(defun assert-subset (A B F)
-  (each (λ (x) (if (mem x B) true (F x))) A))
-
 (deftheory CL ;; classical zeroth-order logic
-  (let (E (ref (SET "Impl" "false")))
-    (defun define-term (φ σ τ)
-      (if (not (= (typeof τ) 'formula))
-          (fail "expected formula of zeroth-order logic"))
-
-      (if (mem φ (deref E)) (fail φ "is already declared"))
-
-      (assert-subset (fv τ)  (set σ)   (λ (x) (fail "unknown variable" x)))
-      (assert-subset (Fun τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
-
-      (assign! E (add φ (deref E)))
-
-      (define φ (if (= (length σ) 0) (app φ nil) (λ σ′ (app φ σ′))))
-
-      (let (R (app φ (mapcar var σ)))
-        (define (+ φ "-intro") (postulate (⊃ τ R)))
-        (define (+ φ "-elim")  (postulate (⊃ R τ))))))
+  (let (E (ref (SET "Implique" "Faux")))
+    (def CL (opaque-definition E
+              (λ (φ τ R) (define (+ φ "-intro") (postulate (⊃ τ R)))
+                         (define (+ φ "-elim")  (postulate (⊃ R τ)))))))
 
   (defun invariance (θ T) (well-formed? "CL" T)
     (postulate (subst θ (formula T))))
@@ -48,14 +32,9 @@
 
   (defun ¬¬-elim (P) (postulate (⊃ (¬¬ P) P))))
 
-(defmacro defterm σ
-  (let (φ (car σ) Π (mapcar show (cadr σ)))
-    (let (ε (cons (cons 'lambda (cdr σ)) (mapcar var Π)))
-      (list 'define-term (show φ) (cons 'list Π) ε))))
-
-(defterm Or  (P Q) (⊃ (¬ P) Q))
-(defterm And (P Q) (¬ (⊃ P (¬ Q))))
-(defterm Iff (P Q) (And (⊃ P Q) (⊃ Q P)))
+(defterm CL Or  (P Q) (⊃ (¬ P) Q))
+(defterm CL And (P Q) (¬ (⊃ P (¬ Q))))
+(defterm CL Iff (P Q) (And (⊃ P Q) (⊃ Q P)))
 
 (defun ∨ σ (foldr Or  σ))
 (defun ∧ σ (foldr And σ))

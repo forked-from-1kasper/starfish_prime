@@ -18,3 +18,27 @@
 (defun well-formed? σ
   (if (forall (λ (ε) (= (theory ε) (car σ))) (cdr σ)) nil
       (fail "expected theorem of " (car σ))))
+
+(defun assert-subset (A B F)
+  (each (λ (x) (if (mem x B) true (F x))) A))
+
+(defun opaque-definition (E Δ)
+  (λ (φ σ τ)
+    (if (not (= (typeof τ) 'formula))
+        (fail τ "is expected to be a formula"))
+
+    (if (mem φ (deref E)) (fail φ "is already declared"))
+
+    (assert-subset (fv τ)  (set σ)   (λ (x) (fail "unknown variable" x)))
+    (assert-subset (Fun τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
+
+    (assign! E (add φ (deref E)))
+
+    (define φ (if (= (length σ) 0) (app φ nil) (λ σ′ (app φ σ′))))
+
+    (Δ φ τ (app φ (mapcar var σ)))))
+
+(defmacro defterm σ
+  (let (φ (cadr σ) Π (mapcar show (caddr σ)))
+    (let (ε (cons (cons 'lambda (cddr σ)) (mapcar var Π)))
+      (list (car σ) (show φ) (cons 'list Π) ε))))
