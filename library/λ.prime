@@ -1,0 +1,92 @@
+(import 'library/common.prime)
+
+(defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
+
+(defun Lam σ (foldr (λ (x M) (binder "λ" x M)) σ))
+(defun App σ (foldl (λ (M N) (app "App" (list N M))) σ))
+
+(deftheory λ
+  (defun η↓ (x M)
+    (if (occur? x M) (fail "variable" x "cannot be free in" M))
+    (postulate (Eval (Lam x (App M (var x))) M)))
+
+  (defun β↓ (x M N) (postulate (Eval (App (Lam x M) N) (subst (DICT x N) M))))
+
+  (defun Refl↓ (E) (postulate (Eval E E)))
+
+  (defun Trans↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
+    (case (formula T₁) (Eval (var "M") (var "N"))
+          (formula T₂) (Eval (var "N") (var "K"))
+      (postulate (Eval M K))))
+
+  (defun App↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
+    (case (formula T₁) (Eval (var "M₁") (var "M₂"))
+          (formula T₂) (Eval (var "N₁") (var "N₂"))
+      (postulate (Eval (App M₁ N₁) (App M₂ N₂)))))
+
+  (defun Lam↓ (x T) (well-formed? "λ" T)
+    (case (formula T) (Eval (var "M") (var "N"))
+      (postulate (Eval (Lam x M) (Lam x N))))))
+
+(defun ↓₁ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₁))
+(defun ↓₂ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₂))
+
+(defun Eager↓ (freshvar E)
+  (if (= (kindof E) 'app)
+      (case E (App (var "M") (var "N"))
+        (let (T₁ (Eager↓ freshvar M) T₂ (Eager↓ freshvar N))
+          (case (formula T₁) (Eval (var "M₁") (var "M₂"))
+                (formula T₂) (Eval (var "N₁") (var "N₂"))
+            (if (= (kindof M₂) 'binder)
+                (let (ε# (freshvar))
+                  (let (T (Trans↓ (App↓ T₁ T₂)
+                                  (β↓ ε# (free (var ε#) M₂) N₂)))
+                    (Trans↓ T (Eager↓ freshvar (↓₂ T)))))
+                (App↓ T₁ T₂)))))
+
+      (= (kindof E) 'binder)
+      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
+
+      (Refl↓ E)))
+
+(defun Lazy↓ (freshvar E)
+  (if (= (kindof E) 'app)
+      (case E (App (var "M") (var "N"))
+        (let (T (Lazy↓ freshvar M))
+          (case (formula T) (Eval (var "M₁") (var "M₂"))
+            (if (= (kindof M₂) 'binder)
+                (let (ε# (freshvar))
+                  (let (T′ (Trans↓ (App↓ T (Refl↓ N))
+                                   (β↓ ε# (free (var ε#) M₂) N)))
+                    (Trans↓ T′ (Lazy↓ freshvar (↓₂ T′)))))
+                (App↓ T (Lazy↓ freshvar N))))))
+
+      (= (kindof E) 'binder)
+      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
+
+      (Refl↓ E)))
+
+(def idfunλ (Lam "a" (var "a")))
+(def constλ (Lam "a" (Lam "b" (var "a"))))
+(def Mλ     (Lam "x" (App (var "x") (var "x"))))
+
+;; Church numerals
+(def zeroλ (Lam "f" "x" (var "x")))
+(def succλ (Lam "n" "f" "x" (App (var "f") (App (var "n") (var "f") (var "x")))))
+(def plusλ (Lam "m" "n" "f" "x" (App (var "m") (var "f") (App (var "n") (var "f") (var "x")))))
+
+;; Church pairs
+(def pairλ (Lam "x" "y" "f" (App (App (var "f") (var "x")) (var "y"))))
+(def fstλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "x")))))
+(def sndλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "y")))))
+
+(let (n (ref 0))
+  (defun gensym ()
+    (assign! n (+ (deref n) 1))
+    (+ "#" (show (deref n)))))
+
+(def oneλ   (App succλ zeroλ))
+(def twoλ   (App succλ oneλ))
+(def threeλ (App succλ twoλ))
+(def fourλ  (App succλ threeλ))
+(def fiveλ  (App succλ fourλ))

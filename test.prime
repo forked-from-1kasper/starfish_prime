@@ -1,299 +1,21 @@
 (import 'library/common.prime)
 
-(def ⊥ (app "false" nil))
+;;;;
 
-(defun Impl (P Q) (app "Impl" (list P Q)))
+(let (x 1 y 2) (print (+ x y)) (newline))
 
-(def ⊤ (Impl ⊥ ⊥))
-(defun ⊃ σ (if (= σ nil) ⊤ (foldr Impl σ)))
+(defmacro incr! (x) (semiquote assign! (unquote x) (+ (deref (unquote x)) 1)))
 
-(defun ¬    (P) (⊃ P ⊥))
-(defun ¬¬   (P) (¬ (¬ P)))
-(defun ¬¬¬  (P) (¬ (¬¬ P)))
-(defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
+(let (n (ref 0))
+  (loop (print (deref n) " ") (incr! n)
+        (not (= (deref n) 5))))
+(newline)
 
-(defun assert-subset (A B F) (each (λ (x) (if (mem x B) true (F x))) A))
-
-(deftheory CL ;; classical zeroth-order logic
-  (let (E (ref (SET "Impl" "false")))
-    (defun define-term (φ σ τ)
-      (if (not (= (typeof τ) 'formula))
-          (fail "expected formula of zeroth-order logic"))
-
-      (if (mem φ (deref E)) (fail φ "is already declared"))
-
-      (assert-subset (fv τ)  (set σ)   (λ (x) (fail "unknown variable" x)))
-      (assert-subset (Fun τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
-
-      (assign! E (add φ (deref E)))
-
-      (define φ (if (= (length σ) 0) (app φ nil) (λ σ′ (app φ σ′))))
-
-      (let (R (app φ (mapcar var σ)))
-        (define (+ φ "-intro") (postulate (⊃ τ R)))
-        (define (+ φ "-elim")  (postulate (⊃ R τ))))))
-
-  (defun invariance (θ T) (well-formed? "CL" T)
-    (postulate (subst θ (formula T))))
-
-  (defun modus-ponens (T₁ T₂) (well-formed? "CL" T₁ T₂)
-    (case (formula T₁) (var "P")
-          (formula T₂) (⊃ (var "P") (var "Q"))
-      (postulate Q)))
-
-  (defun veq (P Q) (postulate (⊃ P Q P)))
-
-  (defun cr (P Q R) (postulate (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))))
-
-  (defun ¬¬-elim (P) (postulate (⊃ (¬¬ P) P))))
-
-(defmacro defterm σ
-  (let (φ (car σ) Π (mapcar show (cadr σ)))
-    (let (ε (cons (cons 'lambda (cdr σ)) (mapcar var Π)))
-      (list 'define-term (show φ) (cons 'list Π) ε))))
-
-(defterm Or  (P Q) (⊃ (¬ P) Q))
-(defterm And (P Q) (¬ (⊃ P (¬ Q))))
-(defterm Iff (P Q) (And (⊃ P Q) (⊃ Q P)))
-
-(defun ∨ σ (foldr Or  σ))
-(defun ∧ σ (foldr And σ))
-
-(defun ↔ σ (if (= (length σ) 0) ⊤
-               (= (length σ) 1) (car σ)
-               (= (length σ) 2) (Iff (car σ) (cadr σ))
-               (And (Iff (car σ) (cadr σ)) (apply ↔ (cdr σ)))))
-
-(defun refine σ
-  (let (T (car σ) ω (ref (cdr σ)))
-    (invariance (fold (λ (k Δ) (add k (dequeue ω) Δ))
-                      (DICT) (fv (formula T))) T)))
-
-(defun exact (φ T) (invariance (unify (formula T) φ) T))
-
-;; Γ ⊢ P₁ → P₂ → ... → Pₙ → Q ⊃ Γ ⊢ P₁ ⊃ Γ ⊢ P₂ ⊃ ... ⊃ Γ ⊢ Pₙ ⊃ Γ ⊢ Q
-(defun mp σ (foldl modus-ponens (car σ) (cdr σ)))
-
-;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
-(defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
-
-(variables P Q R)
-
-(defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
-
-(defthm →-refl (⊃ P P) (mp (cr P (⊃ P P) P) (veq P (⊃ P P)) (veq P P)))
-
-(defthm truth ⊤ (refine →-refl ⊥))
-
-;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
-(defun dup (T) (→-intro (Π₁ (formula T)) T))
-
-;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
-(defun contract (T)
-  (case (formula T) (⊃ P P Q)
-    (mp (cr P P Q) T (refine →-refl P))))
-
-(defthm cut (⊃ P (⊃ P Q) Q)
-  (let (T₁ (cr P (⊃ (⊃ P Q) P) (⊃ (⊃ P Q) Q))
-        T₂ (→-intro P (mp (cr (⊃ P Q) P Q) (refine →-refl (⊃ P Q))))
-        T₃ (veq P (⊃ P Q)))
-    (mp T₁ T₂ T₃)))
-
-;; Γ ⊢ P → ¬¬P
-(defun ¬¬-intro (P) (invariance (DICT "P" P "Q" ⊥) cut))
-
-(defthm →-comm (⊃ (⊃ P Q R) (⊃ Q P R))
-  (let (T₁ (mp (cr Q (⊃ (⊃ Q R) R) (⊃ P (⊃ Q R) R))
-               (→-intro Q (veq (⊃ (⊃ Q R) R) P))
-               (refine cut Q R))
-        T₂ (→-intro Q (cr P (⊃ Q R) R))
-        T₃ (cr Q (⊃ P (⊃ Q R) R) (⊃ (⊃ P Q R) P R))
-        T₄ (cr Q (⊃ P Q R) (⊃ P R))
-        T₅ (cr (⊃ P Q R) (⊃ Q P Q R) (⊃ Q P R))
-        T₆ (veq (⊃ P (⊃ Q R)) Q))
-    (mp T₅ (→-intro (⊃ P Q R) (mp T₄ (mp T₃ T₂ T₁))) T₆)))
-
-;; Γ ⊢ P → Q → R ⊃ Γ ⊢ Q → P → R
-(defun flip (T) (case (formula T) (⊃ P Q R)
-  (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
-
-;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
-(defthm hypsyll₁ (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
-  (let (T₁ (mp (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R)) (⊃ Q R)) (cr P Q R))
-        T₂ (veq (⊃ Q R) P)
-        T₃ (cr (⊃ Q R) (⊃ P Q R) (⊃ (⊃ P Q) (⊃ P R))))
-    (mp T₃ T₁ T₂)))
-
-(defthm hypsyll₂ (⊃ (⊃ P Q) (⊃ Q R) (⊃ P R)) (flip hypsyll₁))
-
-(defun →-trans σ
-  (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
-                       (mp (refine hypsyll₁ P Q R) T₂ T₁))))
-    (foldr φ σ)))
-
-;; Γ ⊢ Q → R ⊃ Γ ⊢ (P → Q) → (P → R)
-(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
-
-;; Γ ⊢ P → Q ⊃ Γ ⊢ (Q → R) → (P → R)
-(defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
-
-(def contrapos₁ (exact (⊃ (⊃ P Q) (⊃ (¬ Q) (¬ P))) hypsyll₂))
-
-(defthm contrapos₂ (⊃ (⊃ (¬ Q) (¬ P)) (⊃ P Q))
-  (→-trans (refine contrapos₁ (¬ Q) (¬ P))
-           (→-con (¬¬ Q) (¬¬-intro P))
-           (→-ant P (¬¬-elim Q))))
-
-(defthm contrapos₃ (⊃ (⊃ P (¬ Q)) (⊃ Q (¬ P)))
-  (→-trans (refine contrapos₁ P (¬ Q))
-           (→-con (¬ P) (¬¬-intro Q))))
-
-(defthm contrapos₄ (⊃ (⊃ (¬ P) Q) (⊃ (¬ Q) P))
-  (→-trans (refine contrapos₁ (¬ P) Q)
-           (→-ant (¬ Q) (¬¬-elim P))))
-
-(defthm absurd₁ (⊃ (¬ P) P Q)
-  (→-ant P (refine exfalso Q)))
-
-(defthm absurd₂ (⊃ P (¬ P) Q) (flip absurd₁))
-
-(defthm ∧-left (⊃ (∧ P Q) P)
-  (→-trans And-elim (mp (refine contrapos₄ P (⊃ P (¬ Q)))
-                        (refine absurd₁ P (¬ Q)))))
-
-(defthm ∧-right (⊃ (∧ P Q) Q)
-  (→-trans And-elim (mp (refine contrapos₄ Q (⊃ P (¬ Q)))
-                        (veq (¬ Q) P))))
-
-(defthm ∧-intro (⊃ P Q (∧ P Q))
-  (mp (→-ant P (→-trans (refine contrapos₃ (⊃ P (¬ Q)) Q)
-                        (→-ant Q And-intro)))
-      (refine cut P (¬ Q))))
-
-(defthm ∧-rec (⊃ (⊃ R P) (⊃ R Q) (⊃ R (∧ P Q)))
-  (→-trans (→-ant R ∧-intro) (cr R Q (∧ P Q))))
-
-(defthm ∧-comm (⊃ (∧ P Q) (∧ Q P))
-  (mp (refine ∧-rec Q P (∧ P Q)) ∧-right ∧-left))
-
-(defthm ∧-assoc-left (⊃ (∧ (∧ P Q) R) (∧ P (∧ Q R)))
-  (mp (refine ∧-rec P (∧ Q R) (∧ (∧ P Q) R))
-      (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-left)
-      (mp (refine ∧-rec Q R (∧ (∧ P Q) R))
-          (→-trans (exact (⊃ (∧ (∧ P Q) R) (∧ P Q)) ∧-left) ∧-right)
-          (exact (⊃ (∧ (∧ P Q) R) R) ∧-right))))
-
-(defthm ∧-assoc-right (⊃ (∧ P (∧ Q R)) (∧ (∧ P Q) R))
-  (mp (refine ∧-rec (∧ P Q) R (∧ P (∧ Q R)))
-      (mp (refine ∧-rec P Q (∧ P (∧ Q R)))
-          (exact (⊃ (∧ P (∧ Q R)) P) ∧-left)
-          (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
-                   (exact (⊃ (∧ Q R) Q) ∧-left)))
-      (→-trans (exact (⊃ (∧ P (∧ Q R)) (∧ Q R)) ∧-right)
-               (exact (⊃ (∧ Q R) R) ∧-right))))
-
-(defthm ∨-left (⊃ P (∨ P Q))
-  (mp (→-ant P Or-intro) absurd₂))
-
-(defthm ∨-right (⊃ Q (∨ P Q))
-  (mp (→-ant Q Or-intro) (veq Q (¬ P))))
-
-(defthm lem (∨ P (¬ P))
-  (mp (refine Or-intro P (¬ P))
-      (refine →-refl (¬ P))))
+(def generate-macro (λ (name) (macro (y) (list '+ name y))))
 
 ;;;;
 
-(defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
-
-(defun Lam σ (foldr (λ (x M) (binder "λ" x M)) σ))
-(defun App σ (foldl (λ (M N) (app "App" (list N M))) σ))
-
-(deftheory λ
-  (defun η↓ (x M)
-    (if (occur? x M) (fail "variable" x "cannot be free in" M))
-    (postulate (Eval (Lam x (App M (var x))) M)))
-
-  (defun β↓ (x M N) (postulate (Eval (App (Lam x M) N) (subst (DICT x N) M))))
-
-  (defun Refl↓ (E) (postulate (Eval E E)))
-
-  (defun Trans↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
-    (case (formula T₁) (Eval (var "M") (var "N"))
-          (formula T₂) (Eval (var "N") (var "K"))
-      (postulate (Eval M K))))
-
-  (defun App↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
-    (case (formula T₁) (Eval (var "M₁") (var "M₂"))
-          (formula T₂) (Eval (var "N₁") (var "N₂"))
-      (postulate (Eval (App M₁ N₁) (App M₂ N₂)))))
-
-  (defun Lam↓ (x T) (well-formed? "λ" T)
-    (case (formula T) (Eval (var "M") (var "N"))
-      (postulate (Eval (Lam x M) (Lam x N))))))
-
-(defun ↓₁ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₁))
-(defun ↓₂ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₂))
-
-(defun Eager↓ (freshvar E)
-  (if (= (kindof E) 'app)
-      (case E (App (var "M") (var "N"))
-        (let (T₁ (Eager↓ freshvar M) T₂ (Eager↓ freshvar N))
-          (case (formula T₁) (Eval (var "M₁") (var "M₂"))
-                (formula T₂) (Eval (var "N₁") (var "N₂"))
-            (if (= (kindof M₂) 'binder)
-                (let (ε# (freshvar))
-                  (let (T (Trans↓ (App↓ T₁ T₂)
-                                  (β↓ ε# (free (var ε#) M₂) N₂)))
-                    (Trans↓ T (Eager↓ freshvar (↓₂ T)))))
-                (App↓ T₁ T₂)))))
-
-      (= (kindof E) 'binder)
-      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
-
-      (Refl↓ E)))
-
-(defun Lazy↓ (freshvar E)
-  (if (= (kindof E) 'app)
-      (case E (App (var "M") (var "N"))
-        (let (T (Lazy↓ freshvar M))
-          (case (formula T) (Eval (var "M₁") (var "M₂"))
-            (if (= (kindof M₂) 'binder)
-                (let (ε# (freshvar))
-                  (let (T′ (Trans↓ (App↓ T (Refl↓ N))
-                                   (β↓ ε# (free (var ε#) M₂) N)))
-                    (Trans↓ T′ (Lazy↓ freshvar (↓₂ T′)))))
-                (App↓ T (Lazy↓ freshvar N))))))
-
-      (= (kindof E) 'binder)
-      (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
-
-      (Refl↓ E)))
-
-(def idfunλ (Lam "a" (var "a")))
-(def constλ (Lam "a" (Lam "b" (var "a"))))
-(def Mλ     (Lam "x" (App (var "x") (var "x"))))
-
-;; Church numerals
-(def zeroλ (Lam "f" "x" (var "x")))
-(def succλ (Lam "n" "f" "x" (App (var "f") (App (var "n") (var "f") (var "x")))))
-(def plusλ (Lam "m" "n" "f" "x" (App (var "m") (var "f") (App (var "n") (var "f") (var "x")))))
-
-;; Church pairs
-(def pairλ (Lam "x" "y" "f" (App (App (var "f") (var "x")) (var "y"))))
-(def fstλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "x")))))
-(def sndλ  (Lam "p" (App (var "p") (Lam "x" "y" (var "y")))))
-
-(let (n (ref 0))
-  (defun gensym ()
-    (assign! n (+ (deref n) 1))
-    (+ "#" (show (deref n)))))
-
-(def oneλ   (App succλ zeroλ))
-(def twoλ   (App succλ oneλ))
-(def threeλ (App succλ twoλ))
-(def fourλ  (App succλ threeλ))
-(def fiveλ  (App succλ fourλ))
+(import 'library/λ.prime)
 
 (print (Eager↓ gensym (App plusλ twoλ threeλ)) "\n"
        (Eager↓ gensym fiveλ) "\n"
@@ -304,6 +26,8 @@
        (Lazy↓ gensym (App (Lam "x" idfunλ) (App Mλ Mλ))) "\n")
 
 ;;;;
+
+(import 'library/logic.prime)
 
 (defthm test-thm (⊃ (var "B") (var "B"))
   (invariance (DICT "P" (var "B")) →-refl))
@@ -325,16 +49,7 @@
 (print (invariance (DICT "P" (var "A")) →-refl) "\n")
 (print (¬¬-elim P) "\n")
 
-(let (x 1 y 2) (print (+ x y)) (newline))
-
-(defmacro incr! (x) (semiquote assign! (unquote x) (+ (deref (unquote x)) 1)))
-
-(let (n (ref 0))
-  (loop (print (deref n) " ") (incr! n)
-        (not (= (deref n) 5))))
-(newline)
-
-(def generate-macro (λ (name) (macro (y) (list '+ name y))))
+;;;;
 
 (print "fin")
 (newline)
