@@ -1,68 +1,20 @@
-(define "def" (macro (e₁ e₂) (list 'define (show e₁) e₂)))
-
-(def cadr   (λ (xs) (car (cdr xs))))
-(def cddr   (λ (xs) (cdr (cdr xs))))
-(def caddr  (λ (xs) (car (cdr (cdr xs)))))
-(def cdddr  (λ (xs) (car (cdr (cdr xs)))))
-(def cadddr (λ (xs) (car (cdr (cdr (cdr xs))))))
-(def cddddr (λ (xs) (cdr (cdr (cdr (cdr xs))))))
-
-(def defun    (macro σ (list 'define (show (car σ)) (cons 'λ (cons (cadr σ) (cddr σ))))))
-(def defmacro (macro σ (list 'define (show (car σ)) (cons 'macro (cons (cadr σ) (cddr σ))))))
-
-(defun idfun (x) x)
-(defun const (x y) x)
-
-(defun odd-elements  (xs) (if (= xs nil) nil (cons (car xs)  (odd-elements  (cddr xs)))))
-(defun even-elements (xs) (if (= xs nil) nil (cons (cadr xs) (even-elements (cddr xs)))))
-
-(defun semiquote/eager (ε)
-  (if (= (typeof ε) 'list)
-      (if (= (car ε) 'unquote)
-          (if (= (length ε) 2) (cadr ε) (fail "unquote"))
-          (cons 'list (mapcar semiquote/eager ε)))
-      (list 'quote ε)))
-
-(defmacro semiquote σ (semiquote/eager σ))
-
-(defmacro DICT σ (list 'dict (cons 'list σ)))
-(defmacro SET  σ (list 'set  (cons 'list σ)))
-
-(defmacro let σ
-  (cons (cons 'λ (cons (odd-elements (car σ)) (cdr σ)))
-        (even-elements (car σ))))
-
-(defmacro defthm (name statement proof)
-  (list 'progn (list 'def name proof)
-    (list 'if (list '= (list 'formula name) statement)
-      nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
-
-(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'def ε (list 'var (show ε)))) σ)))
-
-;;;;
+(import 'library/common.prime)
 
 (def ⊥ (app "false" nil))
-
-(defun ¬    (P) (⊃ P ⊥))
-(defun ¬¬   (P) (¬ (¬ P)))
-(defun ¬¬¬  (P) (¬ (¬¬ P)))
-(defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
 
 (defun Impl (P Q) (app "Impl" (list P Q)))
 
 (def ⊤ (Impl ⊥ ⊥))
 (defun ⊃ σ (if (= σ nil) ⊤ (foldr Impl σ)))
 
-(defun Proj (τ n) (get n (cdr τ)))
-(defun Arity (τ) (length (cdr τ)))
+(defun ¬    (P) (⊃ P ⊥))
+(defun ¬¬   (P) (¬ (¬ P)))
+(defun ¬¬¬  (P) (¬ (¬¬ P)))
+(defun ¬¬¬¬ (P) (¬ (¬¬¬ P)))
 
 (defun assert-subset (A B F) (each (λ (x) (if (mem x B) true (F x))) A))
 
-(defun well-formed? σ
-  (if (forall (λ (ε) (= (theory ε) (car σ))) (cdr σ)) nil
-      (fail "expected theorem of " (car σ))))
-
-(deftheory ZOL ;; zeroth-order logic
+(deftheory CL ;; classical zeroth-order logic
   (let (E (ref (SET "Impl" "false")))
     (defun define-term (φ σ τ)
       (if (not (= (typeof τ) 'formula))
@@ -81,19 +33,19 @@
         (define (+ φ "-intro") (postulate (⊃ τ R)))
         (define (+ φ "-elim")  (postulate (⊃ R τ))))))
 
-  (defun invariance (θ T) (well-formed? "ZOL" T)
+  (defun invariance (θ T) (well-formed? "CL" T)
     (postulate (subst θ (formula T))))
 
-  (defun modus-ponens (T₁ T₂) (well-formed? "ZOL" T₁ T₂)
+  (defun modus-ponens (T₁ T₂) (well-formed? "CL" T₁ T₂)
     (case (formula T₁) (var "P")
           (formula T₂) (⊃ (var "P") (var "Q"))
       (postulate Q)))
 
-  (defun veq (α β) (postulate (⊃ α β α)))
+  (defun veq (P Q) (postulate (⊃ P Q P)))
 
-  (defun cr (α β γ) (postulate (⊃ (⊃ α β γ) (⊃ α β) (⊃ α γ))))
+  (defun cr (P Q R) (postulate (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R))))
 
-  (defun ¬¬-elim (α) (postulate (⊃ (¬¬ α) α))))
+  (defun ¬¬-elim (P) (postulate (⊃ (¬¬ P) P))))
 
 (defmacro defterm σ
   (let (φ (car σ) Π (mapcar show (cadr σ)))
@@ -112,13 +64,6 @@
                (= (length σ) 2) (Iff (car σ) (cadr σ))
                (And (Iff (car σ) (cadr σ)) (apply ↔ (cdr σ)))))
 
-(defun enqueue (ε E)
-  (assign! E (cons ε (deref E))))
-
-(defun dequeue (E)
-  (let (ε (car (deref E)))
-    (assign! E (cdr (deref E))) ε))
-
 (defun refine σ
   (let (T (car σ) ω (ref (cdr σ)))
     (invariance (fold (λ (k Δ) (add k (dequeue ω) Δ))
@@ -132,16 +77,16 @@
 ;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
 (defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
 
-(variables P Q R α β γ)
+(variables P Q R)
 
 (defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
 
-(defthm →-refl (⊃ α α) (mp (cr α (⊃ α α) α) (veq α (⊃ α α)) (veq α α)))
+(defthm →-refl (⊃ P P) (mp (cr P (⊃ P P) P) (veq P (⊃ P P)) (veq P P)))
 
 (defthm truth ⊤ (refine →-refl ⊥))
 
 ;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
-(defun dup (T) (→-intro (Proj (formula T) 0) T))
+(defun dup (T) (→-intro (Π₁ (formula T)) T))
 
 ;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
 (defun contract (T)
@@ -155,7 +100,7 @@
     (mp T₁ T₂ T₃)))
 
 ;; Γ ⊢ P → ¬¬P
-(defun ¬¬-intro (α) (invariance (DICT "P" α "Q" ⊥) cut))
+(defun ¬¬-intro (P) (invariance (DICT "P" P "Q" ⊥) cut))
 
 (defthm →-comm (⊃ (⊃ P Q R) (⊃ Q P R))
   (let (T₁ (mp (cr Q (⊃ (⊃ Q R) R) (⊃ P (⊃ Q R) R))
@@ -361,7 +306,7 @@
 ;;;;
 
 (defthm test-thm (⊃ (var "B") (var "B"))
-  (invariance (DICT "α" (var "B")) →-refl))
+  (invariance (DICT "P" (var "B")) →-refl))
 
 (def ∃ (λ (x P) (binder "∃" x P)))
 
@@ -377,7 +322,7 @@
 (let (ψ (cr (var "A") (var "B") (var "C")))
   (print ψ " & " (dup ψ) "\n"))
 
-(print (invariance (DICT "α" (var "A")) →-refl) "\n")
+(print (invariance (DICT "P" (var "A")) →-refl) "\n")
 (print (¬¬-elim P) "\n")
 
 (let (x 1 y 2) (print (+ x y)) (newline))

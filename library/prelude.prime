@@ -1,0 +1,40 @@
+(define "def" (macro (e₁ e₂) (list 'define (show e₁) e₂)))
+
+(def cadr   (λ (xs) (car (cdr xs))))
+(def cddr   (λ (xs) (cdr (cdr xs))))
+(def caddr  (λ (xs) (car (cdr (cdr xs)))))
+(def cdddr  (λ (xs) (car (cdr (cdr xs)))))
+(def cadddr (λ (xs) (car (cdr (cdr (cdr xs))))))
+(def cddddr (λ (xs) (cdr (cdr (cdr (cdr xs))))))
+
+(def defun    (macro σ (list 'define (show (car σ)) (cons 'λ (cons (cadr σ) (cddr σ))))))
+(def defmacro (macro σ (list 'define (show (car σ)) (cons 'macro (cons (cadr σ) (cddr σ))))))
+
+(defun idfun (x) x)
+(defun const (x y) x)
+
+(defun odd-elements  (xs) (if (= xs nil) nil (cons (car  xs) (odd-elements  (cddr xs)))))
+(defun even-elements (xs) (if (= xs nil) nil (cons (cadr xs) (even-elements (cddr xs)))))
+
+(defmacro let σ
+  (cons (cons 'λ (cons (odd-elements (car σ)) (cdr σ)))
+        (even-elements (car σ))))
+
+(defun unquote-eval (ε)
+  (if (= (typeof ε) 'list)
+      (if (= (car ε) 'unquote)
+          (if (= (length ε) 2) (cadr ε) (fail "unquote"))
+          (cons 'list (mapcar unquote-eval ε)))
+      (list 'quote ε)))
+
+(defmacro semiquote σ (unquote-eval σ))
+
+(defun enqueue (ε E)
+  (assign! E (cons ε (deref E))))
+
+(defun dequeue (E)
+  (let (ε (car (deref E)))
+    (assign! E (cdr (deref E))) ε))
+
+(defmacro DICT σ (list 'dict (cons 'list σ)))
+(defmacro SET  σ (list 'set  (cons 'list σ)))
