@@ -51,10 +51,10 @@
 
 (defun exact (φ T) (invariance (unify (formula T) φ) T))
 
-;; Γ ⊢ P₁ → P₂ → ... → Pₙ → Q ⊃ Γ ⊢ P₁ ⊃ Γ ⊢ P₂ ⊃ ... ⊃ Γ ⊢ Pₙ ⊃ Γ ⊢ Q
+;; Γ ⊢ P₁ ⊃ P₂ ⊃ ... ⊃ Pₙ ⊃ Q → Γ ⊢ P₁ → Γ ⊢ P₂ → ... → Γ ⊢ Pₙ → Γ ⊢ Q
 (defun mp σ (foldl modus-ponens (car σ) (cdr σ)))
 
-;; Γ ⊢ Q ⊃ Γ ⊢ P → Q
+;; Γ ⊢ Q → Γ ⊢ P ⊃ Q
 (defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
 
 (variables P Q R)
@@ -65,10 +65,10 @@
 
 (defthm truth ⊤ (refine →-refl ⊥))
 
-;; Γ ⊢ P → Q ⊃ Γ ⊢ P → (P → Q)
+;; Γ ⊢ P ⊃ Q → Γ ⊢ P ⊃ P ⊃ Q
 (defun dup (T) (→-intro (Π₁ (formula T)) T))
 
-;; Γ ⊢ P → (P → Q) ⊃ Γ ⊢ P → Q
+;; Γ ⊢ P ⊃ P ⊃ Q → Γ ⊢ P ⊃ Q
 (defun contract (T)
   (case (formula T) (⊃ P P Q)
     (mp (cr P P Q) T (refine →-refl P))))
@@ -93,7 +93,7 @@
         T₆ (veq (⊃ P (⊃ Q R)) Q))
     (mp T₅ (→-intro (⊃ P Q R) (mp T₄ (mp T₃ T₂ T₁))) T₆)))
 
-;; Γ ⊢ P → Q → R ⊃ Γ ⊢ Q → P → R
+;; Γ ⊢ P ⊃ Q ⊃ R → Γ ⊢ Q ⊃ P ⊃ R
 (defun flip (T) (case (formula T) (⊃ P Q R)
   (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
 
@@ -111,10 +111,10 @@
                        (mp (refine hypsyll₁ P Q R) T₂ T₁))))
     (foldr φ σ)))
 
-;; Γ ⊢ Q → R ⊃ Γ ⊢ (P → Q) → (P → R)
+;; Γ ⊢ Q ⊃ R → Γ ⊢ (P ⊃ Q) ⊃ (P ⊃ R)
 (defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
 
-;; Γ ⊢ P → Q ⊃ Γ ⊢ (Q → R) → (P → R)
+;; Γ ⊢ P ⊃ Q → Γ ⊢ (Q ⊃ R) ⊃ (P ⊃ R)
 (defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
 
 (def contrapos₁ (exact (⊃ (⊃ P Q) (⊃ (¬ Q) (¬ P))) hypsyll₂))
