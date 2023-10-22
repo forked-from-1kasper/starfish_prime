@@ -32,6 +32,17 @@ val deflocalImpl = binary (fn (E, e1, e2) =>
 
 exception InvalidParamPack
 
+val letImpl =
+let
+  fun unpackLet E0 = fn
+    []             => E0
+  | [_]            => raise InvalidParamPack
+  | e1 :: e2 :: es => unpackLet (Environment.upLocal E0 (Expr.getSymbol e1) (Expr.ieval E0 e2)) es
+in
+  fn (E,   [])    => raise InvalidParamPack
+   | (E, e :: es) => (E, Expr.iprogn (unpackLet E (Expr.getList e)) es)
+end
+
 val lambda =
   special (fn E => fn
       List xs  :: ys => lambdaImpl (uniadic xs) E ys
@@ -51,6 +62,7 @@ val Meta =
  ("macro",    macro),
  ("define",   eager defineImpl),
  ("deflocal", Lambda (fn (E, e) => deflocalImpl E e)),
+ ("let",      Lambda letImpl),
  ("quote",    special (unary #2)),
  ("symbol",   eager symbolImpl),
  ("eval",     eager evalImpl),

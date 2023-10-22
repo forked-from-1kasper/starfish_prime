@@ -13,12 +13,8 @@
 (defun idfun (x) x)
 (defun const (x y) x)
 
-(defun odd-elements  (xs) (if (= xs nil) nil (cons (car  xs) (odd-elements  (cddr xs)))))
-(defun even-elements (xs) (if (= xs nil) nil (cons (cadr xs) (even-elements (cddr xs)))))
-
-(defmacro let σ
-  (cons (cons 'λ (cons (odd-elements (car σ)) (cdr σ)))
-        (even-elements (car σ))))
+(defun filter-odd  (xs) (if (= xs nil) nil (cons (car  xs) (filter-odd  (cddr xs)))))
+(defun filter-even (xs) (if (= xs nil) nil (cons (cadr xs) (filter-even (cddr xs)))))
 
 (defun unquote-eval (ε)
   (if (= (typeof ε) 'list)
