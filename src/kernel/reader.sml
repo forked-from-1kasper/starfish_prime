@@ -114,12 +114,17 @@ struct
     skipWS (fix loop) get T
   end
 
-  fun iter f g get =
+  fun iter p f g x0 get =
   let
-    fun loop T = case f get T of
-      NONE         => SOME ((), T)
-    | SOME (v, T') => (g v; loop T')
+    fun try x T = case p get T of
+      NONE         => SOME (x, T)
+    | SOME (y, T') => catch (f (x, y)) T'
+
+    and catch x T = try x T
+    handle exn => case g x exn of
+      NONE         => NONE
+    | SOME x'      => SOME (x', T)
   in
-    loop
+    catch x0
   end
 end

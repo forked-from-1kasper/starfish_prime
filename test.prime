@@ -40,14 +40,14 @@
 (print (free (app "T" nil) τ₀) "\n")
 (print τ₀ " & " (rebind "∀" τ₀) "\n")
 
-(let (φ (veq (var "A") (var "B")))
-  (print φ " & " (formula φ) "\n"))
+(variables A B C)
 
-(let (ψ (cr (var "A") (var "B") (var "C")))
-  (print ψ " & " (dup ψ) "\n"))
+(let (φ (veq A B)) (print φ " & " (formula φ) "\n"))
+
+(let (ψ (cr A B C)) (print ψ " & " (dup ψ) "\n"))
 
 (print (invariance (DICT "P" (var "A")) →-refl) "\n")
-(print (¬¬-elim P) "\n")
+(print (¬¬-elim C) "\n")
 
 ;;;;
 

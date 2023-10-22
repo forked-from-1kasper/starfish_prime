@@ -5,7 +5,7 @@
     (list 'if (list '= (list 'formula name) statement)
       nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
 
-(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'def ε (list 'var (show ε)))) σ)))
+(defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'deflocal (show ε) (list 'var (show ε)))) σ)))
 
 (defun Π₁ (ε)   (get 0  (cdr ε)))
 (defun Π₂ (ε)   (get 1  (cdr ε)))
@@ -17,7 +17,7 @@
 
 (defun well-formed? σ
   (if (forall (λ (ε) (= (theory ε) (car σ))) (cdr σ)) nil
-      (fail "expected theorem of " (car σ))))
+      (fail "expected theorem of" (car σ))))
 
 (defun assert-subset (A B F)
   (each (λ (x) (if (mem x B) true (F x))) A))

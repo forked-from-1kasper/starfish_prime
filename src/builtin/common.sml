@@ -14,21 +14,21 @@ fun getUnary E e0 =
 let
   val f = Expr.getLam e0
 in
-  fn e => f (E, [Quote e])
+  fn e => #2 (f (E, [Quote e]))
 end
 
 fun getBinary E e0 =
 let
   val f = Expr.getLam e0
 in
-  fn (e1, e2) => f (E, [Quote e1, Quote e2])
+  fn (e1, e2) => #2 (f (E, [Quote e1, Quote e2]))
 end
 
 fun getTernary E e0 =
 let
   val f = Expr.getLam e0
 in
-  fn (e1, e2, e3) => f (E, [Quote e1, Quote e2, Quote e3])
+  fn (e1, e2, e3) => #2 (f (E, [Quote e1, Quote e2, Quote e3]))
 end
 
 fun nulary f E = fn
@@ -51,6 +51,6 @@ fun quaternary f E = fn
   [x, y, z, w] => f (E, x, y, z, w)
 | xs           => raise (InvalidArity ([4], List.length xs))
 
-fun eager   f = Lambda (fn (E, e) => f E (List.map (Expr.eval E) e))
-fun effect  f = Lambda (fn (E, e) => (f E (List.map (Expr.eval E) e); Expr.eps))
-fun special f = Lambda (fn (E, e) => f E e)
+fun eager   f = Lambda (fn (E, e) => (E, f E (List.map (Expr.ieval E) e)))
+fun effect  f = Lambda (fn (E, e) => (f E (List.map (Expr.ieval E) e); (E, Expr.eps)))
+fun special f = Lambda (fn (E, e) => (E, f E e))

@@ -1,10 +1,10 @@
 (* Basic Lisp operators *)
 
-val applyImpl = binary (fn (E, e1, e2) => Expr.getLam e1 (E, List.map Quote (Expr.getList e2)))
+val applyImpl = binary (fn (E, e1, e2) => #2 (Expr.getLam e1 (E, List.map Quote (Expr.getList e2))))
 
 val equal      = binary (fn (_, e1, e2) => Bool (Expr.equal e1 e2))
 val defineImpl = binary (fn (E, e1, e2) => (Environment.upGlobal E (Expr.getString e1) e2; e1))
-val evalImpl   = unary  (fn (E, e)      => Expr.eval E e)
+val evalImpl   = unary  (fn (E, e)      => Expr.ieval E e)
 
 val symbolImpl = unary (fn (E, e) => Symbol (Expr.getString e))
 val typeofImpl = unary (fn (_, e) => Symbol (Expr.typeof e))
@@ -17,10 +17,18 @@ fun uniadic xs ys E =
   handle ListPair.UnequalLengths => raise (InvalidArity ([List.length xs], List.length ys))
 
 fun lambdaImpl unpack E1 body =
-  Lambda (fn (E2, e) => Expr.progn (unpack (List.map (Expr.eval E2) e) E1) body)
+  Lambda (fn (E2, e) => (E2, Expr.iprogn (unpack (List.map (Expr.ieval E2) e) E1) body))
 
 fun macroImpl unpack E1 body =
-  Lambda (fn (E2, e) => Expr.eval E2 (Expr.progn (unpack e E1) body))
+  Lambda (fn (E2, e) => Expr.eval E2 (Expr.iprogn (unpack e E1) body))
+
+val deflocalImpl = binary (fn (E, e1, e2) =>
+  let
+    val t1 = Expr.getString (Expr.ieval E e1)
+    val t2 = Expr.ieval E e2
+  in
+   (Environment.upLocal E t1 t2, String t1)
+  end)
 
 exception InvalidParamPack
 
@@ -42,7 +50,8 @@ val Meta =
  ("apply",    eager applyImpl),
  ("macro",    macro),
  ("define",   eager defineImpl),
- ("quote",    special (unary (fn (_, e) => e))),
+ ("deflocal", Lambda (fn (E, e) => deflocalImpl E e)),
+ ("quote",    special (unary #2)),
  ("symbol",   eager symbolImpl),
  ("eval",     eager evalImpl),
  ("show",     eager showImpl),

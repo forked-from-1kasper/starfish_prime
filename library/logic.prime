@@ -51,19 +51,13 @@
 
 (defun exact (φ T) (invariance (unify (formula T) φ) T))
 
+(variables P Q R)
+
 ;; Γ ⊢ P₁ ⊃ P₂ ⊃ ... ⊃ Pₙ ⊃ Q → Γ ⊢ P₁ → Γ ⊢ P₂ → ... → Γ ⊢ Pₙ → Γ ⊢ Q
 (defun mp σ (foldl modus-ponens (car σ) (cdr σ)))
 
 ;; Γ ⊢ Q → Γ ⊢ P ⊃ Q
 (defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
-
-(variables P Q R)
-
-(defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
-
-(defthm →-refl (⊃ P P) (mp (cr P (⊃ P P) P) (veq P (⊃ P P)) (veq P P)))
-
-(defthm truth ⊤ (refine →-refl ⊥))
 
 ;; Γ ⊢ P ⊃ Q → Γ ⊢ P ⊃ P ⊃ Q
 (defun dup (T) (→-intro (Π₁ (formula T)) T))
@@ -72,6 +66,27 @@
 (defun contract (T)
   (case (formula T) (⊃ P P Q)
     (mp (cr P P Q) T (refine →-refl P))))
+
+;; Γ ⊢ P ⊃ Q ⊃ R → Γ ⊢ Q ⊃ P ⊃ R
+(defun flip (T) (case (formula T) (⊃ P Q R)
+  (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
+
+(defun →-trans σ
+  (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
+                       (mp (refine hypsyll₁ P Q R) T₂ T₁))))
+    (foldr φ σ)))
+
+;; Γ ⊢ Q ⊃ R → Γ ⊢ (P ⊃ Q) ⊃ (P ⊃ R)
+(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
+
+;; Γ ⊢ P ⊃ Q → Γ ⊢ (Q ⊃ R) ⊃ (P ⊃ R)
+(defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
+
+(defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
+
+(defthm →-refl (⊃ P P) (mp (cr P (⊃ P P) P) (veq P (⊃ P P)) (veq P P)))
+
+(defthm truth ⊤ (refine →-refl ⊥))
 
 (defthm cut (⊃ P (⊃ P Q) Q)
   (let (T₁ (cr P (⊃ (⊃ P Q) P) (⊃ (⊃ P Q) Q))
@@ -93,10 +108,6 @@
         T₆ (veq (⊃ P (⊃ Q R)) Q))
     (mp T₅ (→-intro (⊃ P Q R) (mp T₄ (mp T₃ T₂ T₁))) T₆)))
 
-;; Γ ⊢ P ⊃ Q ⊃ R → Γ ⊢ Q ⊃ P ⊃ R
-(defun flip (T) (case (formula T) (⊃ P Q R)
-  (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
-
 ;; https://en.wikipedia.org/wiki/Hypothetical_syllogism#Proof
 (defthm hypsyll₁ (⊃ (⊃ Q R) (⊃ P Q) (⊃ P R))
   (let (T₁ (mp (veq (⊃ (⊃ P Q R) (⊃ P Q) (⊃ P R)) (⊃ Q R)) (cr P Q R))
@@ -105,17 +116,6 @@
     (mp T₃ T₁ T₂)))
 
 (defthm hypsyll₂ (⊃ (⊃ P Q) (⊃ Q R) (⊃ P R)) (flip hypsyll₁))
-
-(defun →-trans σ
-  (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
-                       (mp (refine hypsyll₁ P Q R) T₂ T₁))))
-    (foldr φ σ)))
-
-;; Γ ⊢ Q ⊃ R → Γ ⊢ (P ⊃ Q) ⊃ (P ⊃ R)
-(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
-
-;; Γ ⊢ P ⊃ Q → Γ ⊢ (Q ⊃ R) ⊃ (P ⊃ R)
-(defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
 
 (def contrapos₁ (exact (⊃ (⊃ P Q) (⊃ (¬ Q) (¬ P))) hypsyll₂))
 

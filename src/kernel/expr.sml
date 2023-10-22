@@ -1,5 +1,7 @@
 type 'a environment = {loc : 'a dict, global : 'a dict ref}
 
+type ('a, 'b) eff = 'a environment * 'b
+
 datatype expr =
   Lambda  of closure
 | List    of expr list
@@ -14,7 +16,7 @@ datatype expr =
 | Set     of bag
 | Formula of formula
 | Theorem of string * formula
-withtype closure = expr environment * expr list -> expr
+withtype closure = (expr, expr list) eff -> (expr, expr) eff
 
 exception NameError       of string
 exception AlreadyDeclared of string
@@ -121,11 +123,11 @@ struct
   fun eval E e =
   let
     val loop = fn
-      List (t :: ts) => getLam (eval E t) (E, ts)
-    | List []        => eps
-    | Symbol x       => Environment.get E x
-    | Quote e        => e
-    | t              => t
+      List (t :: ts) => getLam (#2 (eval E t)) (E, ts)
+    | List []        => (E, eps)
+    | Symbol x       => (E, Environment.get E x)
+    | Quote e        => (E, e)
+    | t              => (E, t)
 
     fun pong ex = (print ("\226\134\180\n  " ^ show e ^ "\n"); raise ex)
   in
@@ -133,7 +135,10 @@ struct
   end
 
   fun progn E = fn
-    []      => eps
+    []      => (E, eps)
   | [e]     => eval E e
-  | e :: es => (ignore (eval E e); progn E es)
+  | e :: es => let val (E', _) = eval E e in progn E' es end
+
+  fun ieval  E = #2 o eval  E
+  fun iprogn E = #2 o progn E
 end
