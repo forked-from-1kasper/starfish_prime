@@ -32,17 +32,17 @@
 (defthm test-thm (⊃ (var "B") (var "B"))
   (invariance (DICT "P" (var "B")) →-refl))
 
-(def ∃ (λ (x P) (binder "∃" x P)))
+(def ∃ (λ (x P) (quanteur "∃" x P)))
 
-(def τ₀ (∃ "y" (app "Ineq" (list (var "x") (var "y")))))
+(def τ₀ (∃ "y" (forme "Ineq" (list (var "x") (var "y")))))
 (print (subst (DICT "x" (var "y")) τ₀) "\n") ; “y” is already captured, so it’s safe to have it in substitution
 (print (subst (DICT "x" (var "z")) τ₀) "\n")
-(print (free (app "T" nil) τ₀) "\n")
+(print (free (forme "T" nil) τ₀) "\n")
 (print τ₀ " & " (rebind "∀" τ₀) "\n")
 
 (variables A B C)
 
-(let (φ (veq A B)) (print φ " & " (formula φ) "\n"))
+(let (φ (veq A B)) (print φ " & " (assemblage φ) "\n"))
 
 (let (ψ (cr A B C)) (print ψ " & " (dup ψ) "\n"))
 

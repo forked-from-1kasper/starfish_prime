@@ -1,8 +1,8 @@
 (import 'library/common.prime)
 
-(def ⊥ (app "Faux" nil))
+(def ⊥ (forme "Faux" nil))
 
-(defun Implique (P Q) (app "Implique" (list P Q)))
+(defun Implique (P Q) (forme "Implique" (list P Q)))
 
 (def ⊤ (Implique ⊥ ⊥))
 (defun ⊃ σ (if (= σ nil) ⊤ (foldr Implique σ)))
@@ -19,11 +19,11 @@
                          (define (+ φ "-elim")  (postulate (⊃ R τ)))))))
 
   (defun invariance (θ T) (well-formed? "CL" T)
-    (postulate (subst θ (formula T))))
+    (postulate (subst θ (assemblage T))))
 
   (defun modus-ponens (T₁ T₂) (well-formed? "CL" T₁ T₂)
-    (case (formula T₁) (var "P")
-          (formula T₂) (⊃ (var "P") (var "Q"))
+    (case (assemblage T₁) (var "P")
+          (assemblage T₂) (⊃ (var "P") (var "Q"))
       (postulate Q)))
 
   (defun veq (P Q) (postulate (⊃ P Q P)))
@@ -47,9 +47,9 @@
 (defun refine σ
   (let (T (car σ) ω (ref (cdr σ)))
     (invariance (fold (λ (k Δ) (add k (dequeue ω) Δ))
-                      (DICT) (fv (formula T))) T)))
+                      (DICT) (fv (assemblage T))) T)))
 
-(defun exact (φ T) (invariance (unify (formula T) φ) T))
+(defun exact (φ T) (invariance (unify (assemblage T) φ) T))
 
 (variables P Q R)
 
@@ -57,30 +57,30 @@
 (defun mp σ (foldl modus-ponens (car σ) (cdr σ)))
 
 ;; Γ ⊢ Q → Γ ⊢ P ⊃ Q
-(defun →-intro (P T) (modus-ponens T (veq (formula T) P)))
+(defun →-intro (P T) (modus-ponens T (veq (assemblage T) P)))
 
 ;; Γ ⊢ P ⊃ Q → Γ ⊢ P ⊃ P ⊃ Q
-(defun dup (T) (→-intro (Π₁ (formula T)) T))
+(defun dup (T) (→-intro (Π₁ (assemblage T)) T))
 
 ;; Γ ⊢ P ⊃ P ⊃ Q → Γ ⊢ P ⊃ Q
 (defun contract (T)
-  (case (formula T) (⊃ P P Q)
+  (case (assemblage T) (⊃ P P Q)
     (mp (cr P P Q) T (refine →-refl P))))
 
 ;; Γ ⊢ P ⊃ Q ⊃ R → Γ ⊢ Q ⊃ P ⊃ R
-(defun flip (T) (case (formula T) (⊃ P Q R)
+(defun flip (T) (case (assemblage T) (⊃ P Q R)
   (modus-ponens T (invariance (DICT "P" P "Q" Q "R" R) →-comm))))
 
 (defun →-trans σ
-  (let (φ (λ (T₁ T₂) (case (formula T₁) (⊃ P Q) (formula T₂) (⊃ Q R)
+  (let (φ (λ (T₁ T₂) (case (assemblage T₁) (⊃ P Q) (assemblage T₂) (⊃ Q R)
                        (mp (refine hypsyll₁ P Q R) T₂ T₁))))
     (foldr φ σ)))
 
 ;; Γ ⊢ Q ⊃ R → Γ ⊢ (P ⊃ Q) ⊃ (P ⊃ R)
-(defun →-ant (P T) (case (formula T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
+(defun →-ant (P T) (case (assemblage T) (⊃ Q R) (mp (refine hypsyll₁ P Q R) T)))
 
 ;; Γ ⊢ P ⊃ Q → Γ ⊢ (Q ⊃ R) ⊃ (P ⊃ R)
-(defun →-con (R T) (case (formula T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
+(defun →-con (R T) (case (assemblage T) (⊃ P Q) (mp (refine hypsyll₂ P Q R) T)))
 
 (defthm exfalso (⊃ ⊥ P) (mp (cr ⊥ (¬¬ P) P) (→-intro ⊥ (¬¬-elim P)) (veq ⊥ (¬ P))))
 

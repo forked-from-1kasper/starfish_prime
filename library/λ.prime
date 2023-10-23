@@ -1,9 +1,9 @@
 (import 'library/common.prime)
 
-(defun Eval (E₁ E₂) (app "Eval" (list E₁ E₂)))
+(defun Eval (E₁ E₂) (forme "Eval" (list E₁ E₂)))
 
-(defun Lam σ (foldr (λ (x M) (binder "λ" x M)) σ))
-(defun App σ (foldl (λ (M N) (app "App" (list N M))) σ))
+(defun Lam σ (foldr (λ (x M) (quanteur "λ" x M)) σ))
+(defun App σ (foldl (λ (M N) (forme "App" (list N M))) σ))
 
 (deftheory λ
   (defun η↓ (x M)
@@ -15,53 +15,53 @@
   (defun Refl↓ (E) (postulate (Eval E E)))
 
   (defun Trans↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
-    (case (formula T₁) (Eval (var "M") (var "N"))
-          (formula T₂) (Eval (var "N") (var "K"))
+    (case (assemblage T₁) (Eval (var "M") (var "N"))
+          (assemblage T₂) (Eval (var "N") (var "K"))
       (postulate (Eval M K))))
 
   (defun App↓ (T₁ T₂) (well-formed? "λ" T₁ T₂)
-    (case (formula T₁) (Eval (var "M₁") (var "M₂"))
-          (formula T₂) (Eval (var "N₁") (var "N₂"))
+    (case (assemblage T₁) (Eval (var "M₁") (var "M₂"))
+          (assemblage T₂) (Eval (var "N₁") (var "N₂"))
       (postulate (Eval (App M₁ N₁) (App M₂ N₂)))))
 
   (defun Lam↓ (x T) (well-formed? "λ" T)
-    (case (formula T) (Eval (var "M") (var "N"))
+    (case (assemblage T) (Eval (var "M") (var "N"))
       (postulate (Eval (Lam x M) (Lam x N))))))
 
-(defun ↓₁ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₁))
-(defun ↓₂ (T) (case (formula T) (Eval (var "E₁") (var "E₂")) E₂))
+(defun ↓₁ (T) (case (assemblage T) (Eval (var "E₁") (var "E₂")) E₁))
+(defun ↓₂ (T) (case (assemblage T) (Eval (var "E₁") (var "E₂")) E₂))
 
 (defun Eager↓ (freshvar E)
-  (if (= (kindof E) 'app)
+  (if (= (kindof E) 'forme)
       (case E (App (var "M") (var "N"))
         (let (T₁ (Eager↓ freshvar M) T₂ (Eager↓ freshvar N))
-          (case (formula T₁) (Eval (var "M₁") (var "M₂"))
-                (formula T₂) (Eval (var "N₁") (var "N₂"))
-            (if (= (kindof M₂) 'binder)
+          (case (assemblage T₁) (Eval (var "M₁") (var "M₂"))
+                (assemblage T₂) (Eval (var "N₁") (var "N₂"))
+            (if (= (kindof M₂) 'quanteur)
                 (let (ε# (freshvar))
                   (let (T (Trans↓ (App↓ T₁ T₂)
                                   (β↓ ε# (free (var ε#) M₂) N₂)))
                     (Trans↓ T (Eager↓ freshvar (↓₂ T)))))
                 (App↓ T₁ T₂)))))
 
-      (= (kindof E) 'binder)
+      (= (kindof E) 'quanteur)
       (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
 
       (Refl↓ E)))
 
 (defun Lazy↓ (freshvar E)
-  (if (= (kindof E) 'app)
+  (if (= (kindof E) 'forme)
       (case E (App (var "M") (var "N"))
         (let (T (Lazy↓ freshvar M))
-          (case (formula T) (Eval (var "M₁") (var "M₂"))
-            (if (= (kindof M₂) 'binder)
+          (case (assemblage T) (Eval (var "M₁") (var "M₂"))
+            (if (= (kindof M₂) 'quanteur)
                 (let (ε# (freshvar))
                   (let (T′ (Trans↓ (App↓ T (Refl↓ N))
                                    (β↓ ε# (free (var ε#) M₂) N)))
                     (Trans↓ T′ (Lazy↓ freshvar (↓₂ T′)))))
                 (App↓ T (Lazy↓ freshvar N))))))
 
-      (= (kindof E) 'binder)
+      (= (kindof E) 'quanteur)
       (let (ε# (freshvar)) (Lam↓ ε# (Eager↓ freshvar (free (var ε#) E))))
 
       (Refl↓ E)))

@@ -12,7 +12,7 @@ struct
   | InvalidArity (zs, z0)    => "Expected " ^ String.concatWith " or " (List.map Int.toString zs) ^ " parameters but " ^ Int.toString z0 ^ " were given."
   | TooManyParams xs         => "Too many (" ^ Int.toString (List.length xs) ^ ") parameters were given."
   | TooFewParams xs          => "Too few (" ^ Int.toString (List.length xs) ^ ") parameters were given."
-  | Unify (t1, t2)           => "Unable to unify " ^ quote (Formula.show t1) ^ " with " ^ quote (Formula.show t2) ^ "."
+  | Unify (t1, t2)           => "Unable to unify " ^ quote (Assemblage.show t1) ^ " with " ^ quote (Assemblage.show t2) ^ "."
   | InvalidEscape x          => "Invalid escape sequence in " ^ quote x ^ "."
   | MismatchedBracket        => "Mismatched bracket."
   | EOF                      => "Unexpected EOF."

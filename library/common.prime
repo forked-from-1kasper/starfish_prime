@@ -2,8 +2,8 @@
 
 (defmacro defthm (name statement proof)
   (list 'progn (list 'def name proof)
-    (list 'if (list '= (list 'formula name) statement)
-      nil (list 'fail "defthm:" (list 'formula name) "≠" statement))))
+    (list 'if (list '= (list 'assemblage name) statement)
+      nil (list 'fail "defthm:" (list 'assemblage name) "≠" statement))))
 
 (defmacro variables σ (cons 'progn (mapcar (λ (ε) (list 'deflocal (show ε) (list 'var (show ε)))) σ)))
 
@@ -24,8 +24,8 @@
 
 (defun opaque-definition (E Δ)
   (λ (φ σ τ)
-    (if (not (= (typeof τ) 'formula))
-        (fail τ "is expected to be a formula"))
+    (if (not (= (typeof τ) 'assemblage))
+        (fail τ "is expected to be a assemblage"))
 
     (if (mem φ (deref E)) (fail φ "is already declared"))
 
@@ -34,9 +34,9 @@
 
     (assign! E (add φ (deref E)))
 
-    (define φ (if (= (length σ) 0) (app φ nil) (λ σ′ (app φ σ′))))
+    (define φ (if (= (length σ) 0) (forme φ nil) (λ σ′ (forme φ σ′))))
 
-    (Δ φ τ (app φ (mapcar var σ)))))
+    (Δ φ τ (forme φ (mapcar var σ)))))
 
 (defmacro defterm σ
   (let (φ (cadr σ) Π (mapcar show (caddr σ)))

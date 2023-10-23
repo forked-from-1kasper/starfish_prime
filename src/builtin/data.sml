@@ -1,15 +1,15 @@
 (* List, Dict, Set *)
 
 val car = unary
-  (fn (_, List xs)   => List.hd xs
-    | (_, Formula t) => String (Formula.funsym t)
-    | (_, e)         => raise (TypeMismatch (e, ["list", "formula"])))
+  (fn (_, List xs)      => List.hd xs
+    | (_, Assemblage t) => String (Assemblage.funsym t)
+    | (_, e)            => raise (TypeMismatch (e, ["list", "assemblage"])))
 
 val cdr = unary
-  (fn (_, List xs)               => List (List.tl xs)
-    | (_, Formula (App (_, ts))) => List (List.map Formula ts)
-    | (_, Formula _)             => raise (Failure "cdr")
-    | (_, e)                     => raise (TypeMismatch (e, ["list", "formula"])))
+  (fn (_, List xs)                    => List (List.tl xs)
+    | (_, Assemblage (Forme (_, ts))) => List (List.map Assemblage ts)
+    | (_, Assemblage _)               => raise (Failure "cdr")
+    | (_, e)                          => raise (TypeMismatch (e, ["list", "assemblage"])))
 
 val lengthImpl = unary
   (fn (_, List xs)  => Int (List.length xs)
