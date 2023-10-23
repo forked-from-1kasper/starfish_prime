@@ -20,7 +20,7 @@ val freeImpl  = binary (fn (_, e1, e2) => Assemblage (Assemblage.unbind (Expr.ge
 
 val rebindImpl = binary (fn (_, e1, e2) => Assemblage (Assemblage.rebind (Expr.getString e1) (Expr.getAssemblage e2)))
 val fvImpl     = unary  (fn (_, e)      => Set (Assemblage.fv (Expr.getAssemblage e)))
-val funImpl    = unary  (fn (_, e)      => Set (Assemblage.Fun (Expr.getAssemblage e)))
+val formesImpl = unary  (fn (_, e)      => Set (Assemblage.formes (Expr.getAssemblage e)))
 val occurImpl  = binary (fn (_, e1, e2) => Bool (Assemblage.occur (Expr.getString e1) (Expr.getAssemblage e2)))
 val kindofImpl = unary  (fn (_, e)      => Symbol (Assemblage.kind (Expr.getAssemblage e)))
 val unifyImpl  = binary (fn (_, e1, e2) => Dict (Dict.map Assemblage (Assemblage.unify (Dict.empty ()) (Expr.getAssemblage e1) (Expr.getAssemblage e2))))
@@ -53,7 +53,7 @@ val Math =
  ("free",       eager freeImpl),
  ("rebind",     eager rebindImpl),
  ("fv",         eager fvImpl),
- ("Fun",        eager funImpl),
+ ("formes",     eager formesImpl),
  ("kindof",     eager kindofImpl),
  ("occur?",     eager occurImpl),
  ("assemblage", eager assemblageImpl),

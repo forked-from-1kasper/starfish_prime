@@ -29,8 +29,8 @@
 
     (if (mem φ (deref E)) (fail φ "is already declared"))
 
-    (assert-subset (fv τ)  (set σ)   (λ (x) (fail "unknown variable" x)))
-    (assert-subset (Fun τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
+    (assert-subset (fv τ)     (set σ)   (λ (x) (fail "unknown variable" x)))
+    (assert-subset (formes τ) (deref E) (λ (x) (fail "unknown functional symbol" x)))
 
     (assign! E (add φ (deref E)))
 

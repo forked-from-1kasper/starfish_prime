@@ -102,7 +102,7 @@ struct
     loop (Bag.empty ())
   end
 
-  val Fun =
+  val formes =
   let
       fun loop fs = fn
       Fv _            => fs
