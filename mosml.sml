@@ -23,19 +23,19 @@ val project =
 [("algorithms/sig",     []),
  ("algorithms/bst",     ["algorithms/sig"]),
  ("algorithms/trie",    ["algorithms/sig", "algorithms/bst"]),
- ("kernel/formula",     ["algorithms/trie"]),
- ("kernel/expr",        ["algorithms/trie", "kernel/formula"]),
+ ("kernel/assemblage",  ["algorithms/trie"]),
+ ("kernel/expr",        ["algorithms/trie", "kernel/assemblage"]),
  ("kernel/reader",      ["kernel/expr"]),
- ("kernel/exc",         ["kernel/formula", "kernel/expr", "kernel/reader"]),
+ ("kernel/exc",         ["kernel/assemblage", "kernel/expr", "kernel/reader"]),
  ("builtin/common",     ["kernel/expr"]),
  ("builtin/arithmetic", ["kernel/expr", "builtin/common"]),
  ("builtin/meta",       ["kernel/expr", "builtin/common"]),
- ("builtin/data",       ["algorithms/trie", "kernel/formula", "kernel/expr", "builtin/common"]),
- ("builtin/control",    ["kernel/formula", "kernel/expr", "builtin/common"]),
- ("builtin/math",       ["algorithms/trie", "kernel/exc", "kernel/formula", "kernel/expr", "builtin/common"]),
- ("builtin/basis",      ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/arithmetic",
+ ("builtin/data",       ["algorithms/trie", "kernel/assemblage", "kernel/expr", "builtin/common"]),
+ ("builtin/control",    ["kernel/assemblage", "kernel/expr", "builtin/common"]),
+ ("builtin/math",       ["algorithms/trie", "kernel/exc", "kernel/assemblage", "kernel/expr", "builtin/common"]),
+ ("builtin/basis",      ["algorithms/trie", "kernel/assemblage", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/arithmetic",
                          "builtin/meta", "builtin/data", "builtin/control", "builtin/math"]),
- ("main",               ["algorithms/trie", "kernel/formula", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/basis"])]
+ ("main",               ["algorithms/trie", "kernel/assemblage", "kernel/expr", "kernel/reader", "kernel/exc", "builtin/common", "builtin/basis"])]
 
 local
   val code = List.map (uo o fst) project
