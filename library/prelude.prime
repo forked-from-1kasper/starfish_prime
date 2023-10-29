@@ -32,5 +32,8 @@
   (let (ε (car (deref E)))
     (assign! E (cdr (deref E))) ε))
 
+(defun get! (κ E)   (get κ (deref E)))
+(defun add! (κ ε E) (assign! E (add κ ε (deref E))))
+
 (defmacro DICT σ (list 'dict (cons 'list σ)))
 (defmacro SET  σ (list 'set  (cons 'list σ)))
